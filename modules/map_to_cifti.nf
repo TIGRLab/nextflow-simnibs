@@ -1,7 +1,7 @@
 nextflow.preview.dsl = 2
 
 
-// Example process to create
+// Example process
 process fs_to_gifti{
 
     label 'freesurfer'
@@ -26,6 +26,17 @@ process fs_to_gifti{
     '''
     mris_convert -c !{freesurfer_file} !{fs_white} !{sub}.!{hemi}.shape.gii
     '''
+}
+
+
+// To define
+process freesurfer_prep{
+}
+
+process metric_resample{
+}
+
+process create_dense_scalar{
 }
 
 // Make a process for each step in the simnibs_2_cifti_surface script
@@ -56,7 +67,7 @@ workflow simnibs2cifti{
         // each item in the joined channel is a tuple of
         // (subject, hemisphere, simulation_file, freesurfer_directory)
         i_fs_to_gifti = simfiles.join(fs_dir)
-                                .map{sub, hemi, simfile, fs -> 
+                                .map{sub, hemi, simfile, fs ->
                                     [
                                        sub, hemi, simfile,
                                        "${fs}/surf/${hemi}.white"
