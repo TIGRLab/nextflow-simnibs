@@ -4,6 +4,9 @@ nextflow.preview.dsl = 2
 // Example process
 process fs_to_gifti{
 
+    // Label allows us to define multi-process settings
+    // I.e use a Freesurfer container for all processes with
+    // label 'freesurfer'
     label 'freesurfer'
 
     /*
@@ -31,6 +34,9 @@ process fs_to_gifti{
 
 // To define
 process freesurfer_prep{
+    // We'll use the connectome workbench container for all processes with
+    // label 'workbench'
+    label 'workbench'
 }
 
 process metric_resample{
