@@ -1,8 +1,9 @@
 nextflow.enable.dsl = 2
 
 include {fs_to_mni} from "../modules/mni.nf" params(params)
+include {validateArgs, getUsage} from "../lib/args.nf"
 
-usage = file("${workflow.scriptFile.getParent()}/mni_transform.usage.txt")
+usage = file("${workflow.scriptfile.getparent()}/mni_transform.usage.txt")
 bindings = [
     "subjects": "${params.subjects}",
     "mni_standard": "${params.mni_standard}",
@@ -10,37 +11,28 @@ bindings = [
     "ants_simg": "${params.ants_simg}"
 ]
 
-engine = new groovy.txt.SimpleTemplateEngine()
-toprint = engine.createTemplate(usage.text).make(bindings)
-printhelp = params.help
+usage = getUsage(
+    "${workflow.scriptfile.getparent()}/mni_transform.usage.txt",
+    bindings)
 
 req_param = [
     "--mri2mesh_dir": "${params.bids}",
     "--mni_standard": "${params.mni_standard}",
-    "--out_dir": "${params.out_dir}"
+    "--out_dir": "${params.out_dir}",
+    "--ants_simg": "${params.ants_simg}"
 ]
+missing_args = validateArgs(req_param)
 
-req_config_param = [
-    "--ants_simg": "${params.ants_simg}",
-]
 
-missing_req = req_param.grep{ (it.value == null || it.value == "") }
-missing_req_config = req_config_param.grep{ (it.value == null || it.value == "") }
-
-if (missing_req) {
-    log.error("Missing required command-line arguments!")
-    missing_req.each{ log.error("Missing ${it.key}") }
-    printhelp = true
+if (missing_args) {
+    log.error("Missing parameters!")
+    missing.each{ log.error("Missing ${it.key}") }
+    print(usage)
+    System.exit(0)
 }
 
-if (missing_req) {
-    log.error("Config file missing required parameters!")
-    missing_req_config.each{ log.error("Missing ${it.key}") }
-    printhelp = true
-}
-
-if (printhelp) {
-    print(toprin)
+if (params.help) {
+    print(usage)
     System.exit(0)
 }
 
@@ -54,7 +46,6 @@ if (params.subjects) {
 // Extract subject directories to run
 all_dirs = file(params.bids).list()
 input_dirs = new File(params.mri2mesh_dir).list()
-output_dirs = new File(params.out_dir).list()
 
 input_channel = Channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
                         .map{i -> i.getBaseName()}
