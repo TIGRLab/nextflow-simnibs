@@ -10,6 +10,8 @@ process antsRegistration {
     * https://github.com/nipreps/niworkflows/blob/master/niworkflows/data/t1w-mni_registration_precise_000.json
     */
 
+    label 'ants'
+
     input:
     tuple val(sub), path(t1), path(mni)
 
@@ -56,9 +58,9 @@ workflow fs_to_mni {
     *   mni (str): MNI template (brain)
     *
     * Outputs:
-        warped (channel): (sub, warped) Freesurfer T1 warped into MNI
-        warp (channel): (sub, warp) ANTS .h5 warp file
-        inverseWarp (channel): (sub, inverseWarp) ANTS .h5 inverse warp file
+    *   warped (channel): (sub, warped) Freesurfer T1 warped into MNI
+    *   warp (channel): (sub, warp) ANTS .h5 warp file
+    *   inverseWarp (channel): (sub, inverseWarp) ANTS .h5 inverse warp file
     */
     take:
         freesurfer
