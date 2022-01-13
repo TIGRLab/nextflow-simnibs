@@ -1,9 +1,9 @@
 nextflow.enable.dsl = 2
 
 include {fs_to_mni} from "../modules/mni.nf" params(params)
-include {validateArgs, getUsage} from "../lib/args.nf"
+include { validateArgs; getUsage } from "../lib/args"
 
-usage = file("${workflow.scriptfile.getparent()}/mni_transform.usage.txt")
+
 bindings = [
     "subjects": "${params.subjects}",
     "mni_standard": "${params.mni_standard}",
@@ -12,21 +12,20 @@ bindings = [
 ]
 
 usage = getUsage(
-    "${workflow.scriptfile.getparent()}/mni_transform.usage.txt",
+    "${workflow.scriptFile.getParent()}/mni_transform.usage.txt",
     bindings)
-
+ 
 req_param = [
-    "--mri2mesh_dir": "${params.bids}",
-    "--mni_standard": "${params.mni_standard}",
-    "--out_dir": "${params.out_dir}",
-    "--ants_simg": "${params.ants_simg}"
+    "--mri2mesh_dir": params.bids,
+    "--mni_standard": params.mni_standard,
+    "--out_dir": params.out_dir,
+    "--ants_simg": params.ants_simg
 ]
 missing_args = validateArgs(req_param)
 
-
 if (missing_args) {
     log.error("Missing parameters!")
-    missing.each{ log.error("Missing ${it.key}") }
+    missing_args.each{ log.error("Missing ${it.key}") }
     print(usage)
     System.exit(0)
 }

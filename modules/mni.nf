@@ -74,7 +74,7 @@ workflow fs_to_mni {
                 .join(mni)
         )
 
-    output:
+    emit:
         warped = antsRegistration.out.warped
         warp = antsRegistration.out.warp
         inverseWarp = antsRegistration.out.inverseWarp
