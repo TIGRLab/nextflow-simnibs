@@ -1,0 +1,6 @@
+{
+	"ants_img": "PATH_TO_ANTS_SIMG",
+	"connectome_img": "PATH_TO_CONNECTOME_SIMG",
+	"freesurfer_img": "PATH_TO_FREESURFER_SIMG",
+	"simnibs_img": "PATH_TO_SIMNIBS_IMG"
+}
