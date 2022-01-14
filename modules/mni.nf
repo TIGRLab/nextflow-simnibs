@@ -8,6 +8,16 @@ process antsRegistration {
     /*
     * ANTS settings from 
     * https://github.com/nipreps/niworkflows/blob/master/niworkflows/data/t1w-mni_registration_precise_000.json
+    *
+    * Arguments:
+    *   sub (str): Subject ID
+    *   t1 (path): Path to 3D moving image
+    *   mni (path): Path to fixed 3D image (registration target)
+    *
+    * Outputs:
+    *   warped (queue): (sub, warped) Warped moving image 
+    *   warp (queue): (sub, warp) Forward warp field
+    *   inverseWarp (queue): (sub, warp) Inverse warp field
     */
 
     label 'ants'
