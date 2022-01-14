@@ -22,6 +22,7 @@ process antsRegistration {
     tuple val(sub), path("${sub}_InverseComposite.h5"), emit: inverseWarp
 
 
+    shell:
     '''
     antsRegistration --collapse-output-transforms 1 --dimensionality 3 \
         --initialize-transforms-per-stage 0 --interpolation LanczosWindowedSinc \
@@ -70,8 +71,8 @@ workflow fs_to_mni {
     main:
         antsRegistration(
             freesurfer
-                .map { s, f -> [s, "${f}/mri/brainmask.gz"] }
-                .join(mni)
+                .map { s, f -> [s, "${f}/mri/brainmask.mgz"] }
+                .combine(mni)
         )
 
     emit:
