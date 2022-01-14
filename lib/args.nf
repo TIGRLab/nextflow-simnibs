@@ -14,6 +14,5 @@ def getUsage(usage_file, bindings){
 */
     def usage = new File(usage_file)
     def engine = new SimpleTemplateEngine();
-
     engine.createTemplate(usage.text).make(bindings)
 }

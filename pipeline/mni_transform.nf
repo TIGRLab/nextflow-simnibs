@@ -3,7 +3,6 @@ nextflow.enable.dsl = 2
 include {fs_to_mni} from "../modules/mni.nf" params(params)
 include { validateArgs; getUsage } from "../lib/args"
 
-
 bindings = [
     "subjects": "${params.subjects}",
     "mni_standard": "${params.mni_standard}",
