@@ -7,18 +7,19 @@ bindings = [
     "subjects": "${params.subjects}",
     "mni_standard": "${params.mni_standard}",
     "mri2mesh_dir": "${params.mri2mesh_dir}",
-    "ants_simg": "${params.ants_simg}"
+    "ants_img": "${params.ants_img}"
 ]
+println(bindings)
 
 usage = getUsage(
     "${workflow.scriptFile.getParent()}/mni_transform.usage.txt",
     bindings)
  
 req_param = [
-    "--mri2mesh_dir": params.bids,
+    "--mri2mesh_dir": params.mri2mesh_dir,
     "--mni_standard": params.mni_standard,
     "--out_dir": params.out_dir,
-    "--ants_simg": params.ants_simg
+    "--ants_img": params.ants_img
 ]
 missing_args = validateArgs(req_param)
 
@@ -35,18 +36,17 @@ if (params.help) {
 }
 
 log.info("Input mri2mesh directory: $params.mri2mesh_dir")
-log.info("Using ANTS image file: $params.ants_simg")
+log.info("Using ANTS image file: $params.ants_img")
 
 if (params.subjects) {
     log.info("Subject list file provided: $params.subjects")
 }
 
 // Extract subject directories to run
-all_dirs = file(params.bids).list()
 input_dirs = new File(params.mri2mesh_dir).list()
 
 input_channel = Channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
-                        .map{i -> i.getBaseName()}
+                        .map{i -> [i.getBaseName(), i]}
 
 if (params.subjects){
     subjects_channel = Channel.fromPath(params.subjects)
@@ -76,7 +76,7 @@ process publish{
 workflow {
     main:
         fs_to_mni(
-            input_channel.map { f -> [ f - ~/^fs_/, f ] },
-            params.mni_standard
+            input_channel,
+            Channel.of(params.mni_standard)
         )
 }

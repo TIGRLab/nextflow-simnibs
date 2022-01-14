@@ -11,7 +11,7 @@ REQUIRED
 	-c		Path to Nextflow config file
 	--mri2mesh_dir	Path to mri2mesh output dir
 	--out_dir	Path to output directory
-	--ants_simg	Path to ANTs singularity image
+	--ants_img	Path to ANTs singularity image
 
 OPTIONAL
 	--subjects	List of subject text files to run ($subjects)
