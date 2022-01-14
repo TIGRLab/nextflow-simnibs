@@ -1,0 +1,29 @@
+Freesurfer MNI Transform
+===============================
+
+Perform antsRegistration MNI transformation on Freesurfer T1
+
+USAGE
+
+nextflow run mni_transform.nf [options...] -c <CONFIG> --mri2mesh_dir <MRI2MESH> --out_dir <OUT_DIR>
+
+REQUIRED
+	-c		Path to Nextflow config file
+	--mri2mesh_dir	Path to mri2mesh output dir
+	--out_dir	Path to output directory
+	--ants_img	Path to ANTs singularity image
+
+OPTIONAL
+	--subjects	List of subject text files to run ($subjects)
+	--help		Print this usage log
+
+
+Note: Any parameter can be specified in a Nextflow config file with
+the following syntax:
+
+```
+params.<parameter> = <value>
+
+// i.e
+params.mri2mesh_dir = "/path/to/mri2mesh"
+```
