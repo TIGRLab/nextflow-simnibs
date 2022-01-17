@@ -32,7 +32,7 @@ def validateArgs(LinkedHashMap required){
 
     public Boolean validArg(){
         if (!this.optional){
-            return this.value.isEmpty()
+            return !this.value.isEmpty()
         }
 
         true
