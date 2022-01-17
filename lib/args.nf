@@ -1,5 +1,6 @@
 import groovy.text.SimpleTemplateEngine;
 import java.util.LinkedHashMap;
+import org.apache.commons.lang.WordUtils;
 
 def validateArgs(LinkedHashMap required){
 /*
@@ -123,11 +124,13 @@ def validateArgs(LinkedHashMap required){
             .collect { arg -> arg.makeUsage() }
             .join(" ")
 
-        """\
+        def usage = """\
         |USAGE
 
         |\tnextflow run ${this.scriptName} ${(!this.optional.isEmpty() ? '[options...]' : '')} -c <CONFIG> ${usage_args}
         """.toString().stripIndent().stripMargin()
+
+        WordUtils.wrap(usage, 100)
     }
 
     public void displayDoc() {
