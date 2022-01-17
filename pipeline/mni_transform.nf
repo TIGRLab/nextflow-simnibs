@@ -1,39 +1,53 @@
 nextflow.enable.dsl = 2
 
 include {fs_to_mni} from "../modules/mni.nf" params(params)
-include { validateArgs; getUsage } from "../lib/args"
+include { validateArgs; getArgumentParser } from "../lib/args"
 
-bindings = [
-    "subjects": "${params.subjects}",
-    "mni_standard": "${params.mni_standard}",
-    "mri2mesh_dir": "${params.mri2mesh_dir}",
-    "ants_img": "${params.ants_img}"
-]
-println(bindings)
+parser = getArgumentParser(
+    title: "Freesurfer MNI Transform",
+    description: "Perform antsRegistration MNI transformation on Freesurfer T1",
+    scriptName: "${workflow.scriptName}".toString(),
+    note: """\
+    Any parameter can be specified in a Nextflow config file with the following syntax:
 
-usage = getUsage(
-    "${workflow.scriptFile.getParent()}/mni_transform.usage.txt",
-    bindings)
- 
-req_param = [
-    "--mri2mesh_dir": params.mri2mesh_dir,
-    "--mni_standard": params.mni_standard,
-    "--out_dir": params.out_dir,
-    "--ants_img": params.ants_img
-]
-missing_args = validateArgs(req_param)
+    ```
+    params.<parameter> = <value>
+    
+    // i.e
+    params.mri2mesh_dir = '/path/to/mri2mesh'
+    """
+)
+parser.addArgument("--mri2mesh_dir",
+                   "Path to mri2mesh output dir",
+                   params.mri2mesh_dir.toString(),
+                   "MRI2MESH")
 
-if (missing_args) {
-    log.error("Missing parameters!")
-    missing_args.each{ log.error("Missing ${it.key}") }
-    print(usage)
-    System.exit(0)
-}
+parser.addArgument("--out_dir",
+                   "Path to output directory",
+                   params.out_dir.toString(),
+                   "OUT_DIR")
+
+parser.addArgument("--ants_img",
+                   "Path to ANTS singularity image",
+                   params.ants_img.toString(),
+                   "ANTS_IMG")
+
+parser.addOptional("--subjects", "Path to text file with list of subjects to run")
+
+missingArgs = parser.isMissingRequired()
 
 if (params.help) {
-    print(usage)
+    print(parser.makeDoc())
     System.exit(0)
 }
+
+if (missingArgs) {
+    log.error("Missing parameters!")
+    missingArgs.each{ log.error("Missing ${it}") }
+    print(parser.makeDoc())
+    System.exit(0)
+}
+
 
 log.info("Input mri2mesh directory: $params.mri2mesh_dir")
 log.info("Using ANTS image file: $params.ants_img")
