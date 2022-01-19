@@ -210,8 +210,6 @@ workflow antsApplyWarpToCoordinates{
         warps
 
     main:
-        warpCoords = warps.join(coordinates)
-                        .map { s, w, c -> [s, w, c.x, c.y, c.z] }
 
         // Get warp orientation transform and apply to coordinates
         _antsWarpInfoMatrix(warps)
@@ -226,7 +224,8 @@ workflow antsApplyWarpToCoordinates{
 
         // Revert orientation transform
         _untransformCoordinates(
-            warps.join(_antsApplyWarpToCoordinates.out.warpedCoordinates)
+            _antsWarpInfoMatrix.out.transform
+                .join(_antsApplyWarpToCoordinates.out.warpedCoordinates)
         )
 
     emit:
