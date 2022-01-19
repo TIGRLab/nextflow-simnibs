@@ -45,7 +45,7 @@ if (missingArgs) {
     log.error("Missing parameters!")
     missingArgs.each{ log.error("Missing ${it}") }
     print(parser.makeDoc())
-    System.exit(0)
+    System.exit(1)
 }
 
 
@@ -57,8 +57,6 @@ if (params.subjects) {
 }
 
 // Extract subject directories to run
-input_dirs = new File(params.mri2mesh_dir).list()
-
 input_channel = Channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
                         .map{i -> [i.getBaseName(), i]}
 
