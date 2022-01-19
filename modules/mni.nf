@@ -54,9 +54,183 @@ process antsRegistration {
         --convergence [ 100x70x50x20, 1e-06, 10 ] \
         --smoothing-sigmas 3.0x2.0x1.0x0.0vox --shrink-factors 8x4x2x1 \
         --use-estimate-learning-rate-once 1 --use-histogram-matching 1 \
-        --winsorize-image-intensities [ 0.005, 0.995 ]  --write-composite-transform 1
+        --winsorize-image-intensities [ 0.005, 0.995 ]  --write-composite-transform 1 \
+        -v
     '''
     
+}
+
+process _antsWarpInfoMatrix{
+    /*
+    * Transform input coordinates to match coordinate convention of warp
+    * Arguments:
+    *   subject (String): Subject key
+    *   warpFile (Path): Warpfile
+    *
+    * Outputs:
+    *   subject (String): Subject key
+    *   warpFile (Path): Warpfile
+    *   transform (Path): Coordinate transform used in warpfile
+    */
+
+    input:
+    tuple val(subject), path(warpFile)
+
+    output:
+    tuple val(subject), path(warpFile), path('transform.csv'), emit: transform
+
+    shell:
+    '''
+    antsTransformInfo !{warpFile} | grep -m 1 -A 3 "Direction" | sed 1d | \
+        tr ' ' ',' > transform.csv
+    '''
+}
+
+process _prepareCoordsForWarp{
+
+    label 'numpy'
+    label 'bin'
+    /*
+    * Transform coordinates with a rotation matrix
+    * Arguments:
+    *   subject (String): Subject key
+    *   matrix (Path): Path to rotation matrix
+    *   x (Float): X coordinates
+    *   y (Float): Y coordinates
+    *   z (Float): Z coordinates
+    * Outputs:
+    *   coords: (subject, Path coords): transformed coordinates
+    */
+
+    input:
+    tuple val(subject), path(matrix), val(x), val(y), val(z)
+
+    output:
+    tuple val(subject), path("${sub}_fixed_coords.txt"), emit: coords
+
+    shell:
+    '''
+    #!/usr/bin/env python
+    import numpy as np
+
+    m = np.genfromtxt("!{matrix}")
+    affine = np.zeros((4,4), dtype=float)
+    affine[:3,:3] = m
+    coords = np.array([!{x}, !{y}, !{z}, 0], dtype=float)
+    res = m @ coords[:, np.newaxis]
+
+    np.savetxt("!{sub}_fixed_coords.txt", res, header="x,y,z,t")
+    '''
+}
+
+process _antsApplyWarpToCoordinates{
+
+    /*
+    * Perform antsApplyWarpToCoordinates
+    * Arguments:
+    *   subject (String): Subject key
+    *   warpFile (Path): Path to warp file
+    *   coordinates (Path): Path to ants compatible coordinates.csv
+    *
+    * Outputs:
+    *   warpedCoordinates: (subject, Path warped) coordinates warped into target space
+    */
+
+    label 'ants'
+
+    input:
+    tuple val(subject), path(warpFile), path(coordinates)
+
+    output:
+    tuple val(subject), path("${subject}_warpedCoordinates.csv"), emit: warpedCoordinates
+
+    shell:
+    '''
+    antsApplyTransformsToPoints \
+        -d 3 \
+        -p 1 \
+        -i !{coordinates} \
+        -o !{subject}_warpedCoordinates.csv \
+        -t !{warpFile}
+    '''
+}
+
+process _untransformCoordinates{
+    /*
+    * Perform inverse transform of warp
+    * Arguments:
+    *   subject (String): subject key
+    *   matrix (Path): Path to transformation matrix file
+    *   coordinates (Path): Path to ants compatible coordinates file
+    *
+    * Outputs:
+    *   fixedCoordinates: (subject, Path fixed) warped coordinates with corrected orientation
+    */
+
+    label 'numpy'
+
+    input:
+    tuple val(subject), path(matrix), path(coordinates)
+
+    output:
+    tuple val(subject), path("${subject}_warpedFixedCoordinates.csv"), emit; fixedCoordinates
+
+    shell:
+    '''
+    #!/usr/bin/env python
+
+    import numpy as np
+
+    coords = np.genfromtxt("!{coordinates}", skip_header=1, delimiter=",")
+    aff = np.zeros((4,4), dtype=float)
+    matrix = np.genfromtxt("!{matrix}", delimiter=",")
+
+    # Invert matrix
+    aff[:3,:3] = np.linalg.inv(matrix)
+    
+    result = aff @ coords[:, np.newaxis]
+    np.savetxt("!{subject}_warpedFixedCoordinates.csv", delimiter=",")
+    '''
+}
+
+workflow antsApplyWarpToCoordinates{
+/*
+* ANTS apply transforms to coordinates workflow
+*
+* Arguments:
+*   coordinates (Channel): [subject, HashMap [x,y,z] coordinates]
+*   warps (Channel): [subject, warpFile]
+*
+* Outputs:
+*   warpedCoordinates (Channel): [subject, HashMap [x,y,z] warpedCoordinates]
+*/
+
+    take:
+        coordinates
+        warps
+
+    main:
+        warpCoords = warps.join(coordinates)
+                        .map { s, w, c -> [s, w, c.x, c.y, c.z] }
+
+        // Get warp orientation transform and apply to coordinates
+        _antsWarpInfoMatrix(warps)
+        _prepareCoordsForWarp(
+            _antsWarpInfoMatrix.out.transform
+                .join(coordinates)
+        )
+
+        // Apply warp
+        warpFixed = warps.join(_prepareCoordsForWarp.out.coords)
+        _antsApplyWarpToCoordinates(warpFixed)
+
+        // Revert orientation transform
+        _untransformCoordinates(
+            warps.join(_antsApplyWarpToCoordinates.out.warpedCoordinates)
+        )
+
+    emit:
+        warpedCoordinates = _untransformCoordinates.out.fixedCoordinates
 }
 
 
