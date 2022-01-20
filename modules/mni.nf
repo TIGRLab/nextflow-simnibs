@@ -110,16 +110,11 @@ process _prepareCoordsForWarp{
 
     shell:
     '''
-    #!/usr/bin/env python
-    import numpy as np
-
-    m = np.genfromtxt("!{matrix}")
-    affine = np.zeros((4,4), dtype=float)
-    affine[:3,:3] = m
-    coords = np.array([!{x}, !{y}, !{z}, 0], dtype=float)
-    res = m @ coords[:, np.newaxis]
-
-    np.savetxt("!{sub}_fixed_coords.txt", res, header="x,y,z,t")
+    printf "x,y,z,t\n!{x},!{y},!{z},0" > coords.txt
+    /bin/mni/transformCoords.py \
+        coords.txt \
+        !{matrix} \
+        !{sub}_fixed_coords.txt
     '''
 }
 
@@ -168,6 +163,7 @@ process _untransformCoordinates{
     */
 
     label 'numpy'
+    label 'bin'
 
     input:
     tuple val(subject), path(matrix), path(coordinates)
@@ -177,19 +173,11 @@ process _untransformCoordinates{
 
     shell:
     '''
-    #!/usr/bin/env python
-
-    import numpy as np
-
-    coords = np.genfromtxt("!{coordinates}", skip_header=1, delimiter=",")
-    aff = np.zeros((4,4), dtype=float)
-    matrix = np.genfromtxt("!{matrix}", delimiter=",")
-
-    # Invert matrix
-    aff[:3,:3] = np.linalg.inv(matrix)
-    
-    result = aff @ coords[:, np.newaxis]
-    np.savetxt("!{subject}_warpedFixedCoordinates.csv", delimiter=",")
+    /bin/mni/transformCoords.py \
+        !{coordinates} \
+        !{matrix} \
+        !{sub}_fixed_coords.txt \
+        --invert
     '''
 }
 
