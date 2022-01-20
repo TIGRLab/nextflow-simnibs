@@ -1,6 +1,6 @@
 nextflow.enable.dsl = 2
 
-include {fs_to_mni} from "../modules/mni.nf" params(params)
+include {registerFreesurferToMNI} from "../modules/mni.nf" params(params)
 include { validateArgs; getArgumentParser } from "../lib/args"
 
 parser = getArgumentParser(
@@ -87,7 +87,7 @@ process publish{
 
 workflow {
     main:
-        fs_to_mni(
+        registerFreesurferToMNI(
             input_channel,
             Channel.of(params.mni_standard)
         )
