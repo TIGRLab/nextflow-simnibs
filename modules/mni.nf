@@ -111,7 +111,7 @@ process _prepareCoordsForWarp{
     shell:
     '''
     printf "x,y,z,t\n!{x},!{y},!{z},0" > coords.txt
-    /bin/mni/transformCoords.py \
+    python bin/mni/transformCoords.py \
         coords.txt \
         !{matrix} \
         !{sub}_fixed_coords.txt
@@ -173,7 +173,7 @@ process _untransformCoordinates{
 
     shell:
     '''
-    /bin/mni/transformCoords.py \
+    python /bin/mni/transformCoords.py \
         !{coordinates} \
         !{matrix} \
         !{sub}_fixed_coords.txt \
