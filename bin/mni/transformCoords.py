@@ -18,18 +18,29 @@ def main():
     parser.add_argument("--invert", required=False, action="store_true")
     args = parser.parse_args()
 
-    m = np.genfromtxt(args.matrix, sep=",", dtype=float)
-    coords = np.genfromtxt(args.coords, sep=",", skip_header=1, dtype=float)
+    m = np.genfromtxt(args.matrix, delimiter=",", dtype=float)
+    coords = np.genfromtxt(args.coords,
+                           delimiter=",",
+                           skip_header=1,
+                           dtype=float)
+
+    if coords.shape[0] == 3:
+        coords = np.append(coords, 0)
 
     affine = np.zeros((4, 4), dtype=float)
 
     if args.invert:
-        affine[:3, :3] = np.lingalg.pinv(m)
+        affine[:3, :3] = np.linalg.pinv(m)
     else:
         affine[:3, :3] = m
 
-    res = m @ coords[:, np.newaxis]
-    np.savetxt(args.output, res, header="x,y,z,t")
+    res = affine @ coords[:, np.newaxis]
+    np.savetxt(args.output,
+               res.reshape((1, 4)),
+               header="x,y,z,t",
+               comments="",
+               fmt="%.10f",
+               delimiter=",")
 
 
 if __name__ == "__main__":

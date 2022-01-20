@@ -28,8 +28,8 @@ process antsRegistration {
 
     output:
     tuple val(sub), path("${sub}_Warped.nii.gz"), emit: warped
-    tuple val(sub), path("${sub}_Composite.h5"), emit: warp
-    tuple val(sub), path("${sub}_InverseComposite.h5"), emit: inverseWarp
+    tuple val(sub), path("${sub}Composite.h5"), emit: warp
+    tuple val(sub), path("${sub}InverseComposite.h5"), emit: inverseWarp
 
 
     shell:
@@ -77,7 +77,7 @@ process _antsWarpInfoMatrix{
     tuple val(subject), path(warpFile)
 
     output:
-    tuple val(subject), path(warpFile), path('transform.csv'), emit: transform
+    tuple val(subject), path('transform.csv'), emit: transform
 
     shell:
     '''
@@ -106,15 +106,16 @@ process _prepareCoordsForWarp{
     tuple val(subject), path(matrix), val(x), val(y), val(z)
 
     output:
-    tuple val(subject), path("${sub}_fixed_coords.txt"), emit: coords
+    tuple val(subject), path("${subject}_fixed_coords.csv"), emit: coords
 
     shell:
     '''
+    #!/bin/bash
     printf "x,y,z,t\n!{x},!{y},!{z},0" > coords.txt
-    python bin/mni/transformCoords.py \
+    python /scripts/mni/transformCoords.py \
         coords.txt \
         !{matrix} \
-        !{sub}_fixed_coords.txt
+        !{subject}_fixed_coords.csv
     '''
 }
 
@@ -169,14 +170,15 @@ process _untransformCoordinates{
     tuple val(subject), path(matrix), path(coordinates)
 
     output:
-    tuple val(subject), path("${subject}_warpedFixedCoordinates.csv"), emit; fixedCoordinates
+    tuple val(subject), path("${subject}_warpedFixedCoordinates.csv"), emit: fixedCoordinates
 
     shell:
     '''
-    python /bin/mni/transformCoords.py \
+    #!/bin/bash
+    python /scripts/mni/transformCoords.py \
         !{coordinates} \
         !{matrix} \
-        !{sub}_fixed_coords.txt \
+        !{subject}_warpedFixedCoordinates.csv \
         --invert
     '''
 }
@@ -201,14 +203,17 @@ workflow antsApplyWarpToCoordinates{
 
         // Get warp orientation transform and apply to coordinates
         _antsWarpInfoMatrix(warps)
+
         _prepareCoordsForWarp(
             _antsWarpInfoMatrix.out.transform
-                .join(coordinates)
+                .combine(coordinates)
+                .map { it.flatten() }
         )
 
         // Apply warp
-        warpFixed = warps.join(_prepareCoordsForWarp.out.coords)
-        _antsApplyWarpToCoordinates(warpFixed)
+        _antsApplyWarpToCoordinates(
+            warps.join(_prepareCoordsForWarp.out.coords)
+        )
 
         // Revert orientation transform
         _untransformCoordinates(
@@ -221,7 +226,7 @@ workflow antsApplyWarpToCoordinates{
 }
 
 
-workflow fs_to_mni {
+workflow registerFreesurferToMNI {
     /*
     * Register Freesurfer outputs to MNI standard space
     *
