@@ -19,7 +19,7 @@ process placeCoil{
 
     shell:
     '''
-    python /scripts/placeCoil.py \
+    python /scripts/simulation/placeCoil.py \
         !{coordinate} \
         !{mesh} \
         !{twist} \
@@ -30,13 +30,39 @@ process placeCoil{
     '''
 }
 
+process simulate{
+    label 'simnibs'
+    label 'bin'
+
+    input:
+    tuple val(sub), path(mesh), path(matsimnibs), path(coil), path(m2m_path), path(fs_path)
+
+    output:
+    tuple val(sub), path("${sub}_simulation.msh"), emit: simMsh
+    tuple val(sub), path("${sub}_simulation.geo"), emit: simGeo
+    tuple val(sub), path("${sub}.lh.simulation.shape.gii"), emit: leftSim
+    tuple val(sub), path("${sub}.rh.simulation.shape.gii"), emit: rightSim
+
+    shell:
+    '''
+    python /scripts/simulation/simulate.py \
+        !{mesh} \
+        !{matsimnibs} \
+        !{coil} \
+        --gifti --m2m-path !{m2m_path}
+    '''
+}
+
 
 workflow runSimulate{
 
     take:
         mesh
         coordinates
+        fs_path
+        m2m_path
         twist
+        coil
 
     main:
 
@@ -44,4 +70,17 @@ workflow runSimulate{
             mesh.join(coordinates)
                 .combine(twist)
         )
+
+        simulate(
+            mesh.join(placeCoil.out.matsimnibs)
+                .combine(coil)
+                .join(m2m_path)
+                .join(fs_path)
+        )
+
+    emit:
+        simMsh = simulate.out.simMsh
+        simGeo = simulate.out.simGeo
+        leftGifti = simulate.out.leftSim
+        rightGifti = simulate.out.rightSim
 }

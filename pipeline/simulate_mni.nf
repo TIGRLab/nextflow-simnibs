@@ -30,6 +30,11 @@ parser.addArgument("--twist",
     params.twist.toString(),
     "TWIST_ANGLE")
 
+parser.addArgument("--coil",
+    "Coil definition file (.nii.gz)",
+    params.coil.toString(),
+    "COIL_NII_GZ")
+
 parser.addOptional("--subjects", "Path to text file with list of subjects to run")
 parser.addOptional("--warps_file",
     "Path to text file containing (subject, warp, inverseWarp) tuples",
@@ -138,16 +143,9 @@ workflow {
         runSimulate(
             mesh_input,
             antsToNumpy.out.coords,
-            Channel.of(params.twist)
+            fs_input,
+            m2m_input,
+            Channel.of(params.twist),
+            Channel.fromPath(params.coil)
         )
-
-        // Once we have coordinate / subject, place coil (matsimnibs)
-        // Steps to perform
-        // a. Need to get MNI coordinate, .msh file, and scalp projection
-        // b. Once scalp projection is done, get coil orientation and apply given centre
-        // c. Run simulation
-
-        // Finally run simulation
-
-                    
 }
