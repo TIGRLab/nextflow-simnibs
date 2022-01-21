@@ -33,7 +33,7 @@ def gen_qc(head, brain, outfile, lines=None):
     p.save(outfile)
 
 
-def get_matsimnibs(centre, twist, n):
+def get_matsimnibs(centre, n, twist):
 
     # Compute euler angles
     alpha = arctan2(-n[1], n[2])
@@ -69,7 +69,7 @@ def get_matsimnibs(centre, twist, n):
 
 def main():
     parser = argparse.ArgumentParser(
-        desc="Place coil on scalp "
+        description="Place coil on scalp "
         "closest to given coordinate and orient coil. "
         "Returns SimNIBS matsimnibs matrix")
 
@@ -89,7 +89,7 @@ def main():
     args = parser.parse_args()
 
     msh = mesh_io.read_msh(args.mesh)
-    coord = np.loadtxt(args.coord, skiprows=1, delimiter=",")[:3]
+    coord = np.load(args.coord)
 
     head = make_surf(msh, 1005)
     brain = make_surf(msh, 1002)
@@ -104,7 +104,7 @@ def main():
 
     if args.qc_file:
         project_line = Line(coord, head_coord)
-        coil_y = Line(head_coord, head_coord + coil_z[:3, 1].flatten() * 10)
+        coil_y = Line(head_coord, head_coord + msn[:3, 1].flatten() * 10)
         gen_qc(head, brain, args.qc_file, lines=[project_line, coil_y])
 
 
