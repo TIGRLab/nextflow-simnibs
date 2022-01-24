@@ -183,6 +183,30 @@ process _untransformCoordinates{
     '''
 }
 
+process antsToNumpy{
+    /*
+    * Transform ANTS style CSV into numpy array
+    */
+
+    label 'numpy'
+
+    input:
+    tuple val(subject), path(antsCoords)
+
+    output:
+    tuple val(subject), path("${subject}_coords.npy"), emit: coords
+
+    shell:
+    '''
+    #!/usr/bin/env python
+
+    import numpy as np
+
+    a = np.loadtxt("!{antsCoords}", skiprows=1, delimiter=",")
+    np.save("!{subject}_coords.npy", a[:3])
+    '''
+}
+
 workflow antsApplyWarpToCoordinates{
 /*
 * ANTS apply transforms to coordinates workflow
@@ -220,6 +244,7 @@ workflow antsApplyWarpToCoordinates{
             _antsWarpInfoMatrix.out.transform
                 .join(_antsApplyWarpToCoordinates.out.warpedCoordinates)
         )
+
 
     emit:
         warpedCoordinates = _untransformCoordinates.out.fixedCoordinates

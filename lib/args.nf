@@ -31,8 +31,9 @@ def validateArgs(LinkedHashMap required){
     }
 
     public Boolean validArg(){
+
         if (!this.optional){
-            return !this.value.isEmpty()
+            return !this.value.isEmpty() && this.value != "null"
         }
 
         true

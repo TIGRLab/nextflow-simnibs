@@ -1,7 +1,8 @@
 nextflow.preview.dsl = 2
 
-include {registerFreesurferToMNI; antsApplyWarpToCoordinates } from "../modules/mni.nf"
+include {registerFreesurferToMNI; antsApplyWarpToCoordinates; antsToNumpy } from "../modules/mni.nf"
 include { getArgumentParser } from "../lib/args"
+include { runSimulate } from "../modules/simulate.nf"
 
 parser = getArgumentParser(
     title: "SimNIBS MNI Simulations",
@@ -23,6 +24,16 @@ parser.addArgument("--mni_coordinates",
     "MNI coordinates to simulate at",
     params.mni_coordinates.toString(),
     "X,Y,Z")
+
+parser.addArgument("--twist",
+    "Coil Twist Angle (BrainSight convention)",
+    params.twist.toString(),
+    "TWIST_ANGLE")
+
+parser.addArgument("--coil",
+    "Coil definition file (.nii.gz)",
+    params.coil.toString(),
+    "COIL_NII_GZ")
 
 parser.addOptional("--subjects", "Path to text file with list of subjects to run")
 parser.addOptional("--warps_file",
@@ -65,6 +76,8 @@ fs_input = Channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
             .map { i -> [i.getBaseName() - ~/^fs_/, i] }
 m2m_input = Channel.fromPath("$params.mri2mesh_dir/m2m_sub-*", type: 'dir')
             .map { i -> [i.getBaseName() - ~/^m2m_/, i] }
+mesh_input = Channel.fromPath("$params.mri2mesh_dir/*.msh")
+            .map { i -> [i.getBaseName() - ~/.msh$/, i] }
 
 // Filter subjects
 if (params.subjects){
@@ -72,10 +85,14 @@ if (params.subjects){
             .splitText() { it.strip() }
     fs_input = fs_input.join(subjects)
     m2m_input = m2m_input.join(subjects)
+    mesh_input = mesh_input.join(subjects)
 } else {
     subjects = fs_input.map { s,f -> s }
 }
-mri2mesh = fs_input.join(m2m_input, failOnMismatch: true)
+
+// Check to make sure dataset is complete
+fs_input.join(m2m_input, failOnMismatch: true)
+        .join(mesh_input, failOnMismatch: true)
 
 workflow getOrCreateWarps{
 /*
@@ -121,11 +138,14 @@ workflow {
             getOrCreateWarps.out.warps.map { [it.subject, it.warp] }
         )
 
-        // Once warps are obtained, transform MNI coordinate for each subject
+        antsToNumpy(antsApplyWarpToCoordinates.out.warpedCoordinates)
 
-        // Once we have coordinate / subject, place coil (matsimnibs)
-
-        // Finally run simulation
-
-                    
+        runSimulate(
+            mesh_input,
+            antsToNumpy.out.coords,
+            fs_input,
+            m2m_input,
+            Channel.of(params.twist),
+            Channel.fromPath(params.coil)
+        )
 }
