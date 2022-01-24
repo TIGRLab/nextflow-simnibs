@@ -38,10 +38,10 @@ process simulate{
     tuple val(sub), path(mesh), path(matsimnibs), path(coil), path(m2m_path), path(fs_path)
 
     output:
-    tuple val(sub), path("${sub}_simulation.msh"), emit: simMsh
-    tuple val(sub), path("${sub}_simulation.geo"), emit: simGeo
-    tuple val(sub), path("${sub}.lh.simulation.shape.gii"), emit: leftSim
-    tuple val(sub), path("${sub}.rh.simulation.shape.gii"), emit: rightSim
+    tuple val(sub), path("${sub}_TMS*.msh"), emit: simMsh
+    tuple val(sub), path("${sub}_TMS*.geo"), emit: simGeo
+    tuple val(sub), path("fsavg_overlays/lh.*"), emit: leftSim
+    tuple val(sub), path("fsavg_overlays/rh.*"), emit: rightSim
 
     shell:
     '''
@@ -78,9 +78,27 @@ workflow runSimulate{
                 .join(fs_path)
         )
 
+
+
+
+
+
     emit:
         simMsh = simulate.out.simMsh
         simGeo = simulate.out.simGeo
-        leftGifti = simulate.out.leftSim
-        rightGifti = simulate.out.rightSim
+        leftGifti = simulate.out
+                        .leftSim.map {sub, fields -> [
+                            sub,
+                            fields.collectEntries{
+                                [it.getName().split("\\.")[ -1 ], it]
+                            }
+                        ]}
+        rightGifti = simulate.out
+                        .rightSim.map {sub, fields -> [
+                            sub,
+                            fields.collectEntries{
+                                [it.getName().split("\\.")[ -1 ], it]
+                            }
+                        ]}
+
 }
