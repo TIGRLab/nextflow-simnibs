@@ -6,7 +6,7 @@
 process antsRegistration {
 
     /*
-    * ANTS settings from 
+    * ANTS settings from
     * https://github.com/nipreps/niworkflows/blob/master/niworkflows/data/t1w-mni_registration_precise_000.json
     *
     * Arguments:
@@ -15,7 +15,7 @@ process antsRegistration {
     *   mni (path): Path to fixed 3D image (registration target)
     *
     * Outputs:
-    *   warped (queue): (sub, warped) Warped moving image 
+    *   warped (queue): (sub, warped) Warped moving image
     *   warp (queue): (sub, warp) Forward warp field
     *   inverseWarp (queue): (sub, warp) Inverse warp field
     */
@@ -57,7 +57,33 @@ process antsRegistration {
         --winsorize-image-intensities [ 0.005, 0.995 ]  --write-composite-transform 1 \
         -v
     '''
-    
+
+}
+
+// TODO
+process antsRegistrationQC{
+/* Generate QC image for ANTs registration
+*
+* Arguments:
+*   subject (String): Subject identifier key
+*   moving (Path): moving image
+*   fixed (Path): fixed image
+*   config (Path): Path to Niviz config file
+*
+* Output:
+*   qcImage (Queue): [subject,
+*                     Path qcImage] : Path to QC image]
+*/
+
+    input:
+    tuple val(subject), path(moving), path(fixed), path(config)
+
+    output:
+    tuple val(subject), path("${sub}*svg"), emit: qcImage
+
+    shell:
+    '''
+    '''
 }
 
 process _antsWarpInfoMatrix{
