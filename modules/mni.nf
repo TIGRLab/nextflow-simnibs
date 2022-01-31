@@ -75,6 +75,8 @@ process antsRegistrationQC{
 *                     Path qcImage] : Path to QC image]
 */
 
+    label 'niviz'
+
     input:
     tuple val(subject), path(moving), path(fixed), path(config)
 
