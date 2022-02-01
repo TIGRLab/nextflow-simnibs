@@ -115,7 +115,7 @@ process _antsWarpInfoMatrix{
     shell:
     '''
     antsTransformInfo !{warpFile} | grep -m 1 -A 3 "Direction" | sed 1d | \
-        tr ' ' '    ,' > transform.csv
+        tr ' ' ',' > transform.csv
     '''
 }
 
