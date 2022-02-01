@@ -40,12 +40,12 @@ parser.addArgument("--out_dir",
 
 parser.addArgument("--freesurfer_img",
 				   "Path to Freesurfer singularity image",
-				   params.freesurfers_img.toString(),
+				   params.freesurfer_img.toString(),
 				   "FS_IMG")
 
 parser.addArgument("--connectome_img",
 				   "Path to Connectome Workbench singularity image",
-				   params.fs_img.toString(),
+				   params.connectome_img.toString(),
 				   "CONNECTOME_IMG")
 
 parser.addOptional("--subjects", "Path to text file with list of subjects to run")
@@ -68,7 +68,7 @@ log.info("Input mri2mesh directory: $params.mri2mesh_dir")
 log.info("Input simulation directory: $params.simulation_dir")
 log.info("Using FS image file: $params.freesurfer_img")
 log.info("Using connectome-workbench image file: $params.connectome_img")
-
+log.info("Input HCP atlas directory: $params.atlas_dir")
 if (params.subjects) {
     log.info("Subject list file provided: $params.subjects")
 }
@@ -80,7 +80,7 @@ if (params.subjects) {
 fs_input = channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
 						.map{i -> [i.getBaseName() - ~/^fs_/, i]}
 
-simul_input = channel.fromPath("$params.simul_dir/sub-*", type: 'dir')
+simul_input = channel.fromPath("$params.simulation_dir/sub-*", type: 'dir')
 						.map{i -> [i.getBaseName(), 
 									new FileNameByRegexFinder().getFileNames("${i}",".subject_overlays/.*E.norm\$")]} //use branch operator
 

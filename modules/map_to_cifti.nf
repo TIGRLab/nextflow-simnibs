@@ -35,70 +35,44 @@ process fs_to_gifti{
 
 // To define
 process freesurfer_prep{
-    // We'll use the connectome workbench container for all processes with
-    // label 'workbench'
-    label 'workbench'
-    /* Prepare surfaces for resampling
-    *
-    Inputs:
-    *   subject_ID (str)
-    *   hemi (str): [lh, rh]: Freesurfer Hemisphere
-    * fs_white (path): Path to freesurfer white matter surface
-    * fs_pial (path): Path to freesurfer pial surface
-    * fs_sphere (path): path to freesurfer current sphere
-    * resample_sphere (path): path to new HCP sphere (32k or 164k) to resample to
-    * hcp_hemi (str): [L, R]: HCP Hemisphere
-    * Surface vertices (str): [32k, 164k]: total number of greyordinate vertices per hemi
+    label 'connectome'
 
-    * Outputs: (subject_ID: str, hemi: [lh, rh], gifti_current_midthick_file: path )
-               (subject_ID: str, Hemi: [L, R], hcp_vertice: [32k,164k], gifti_new_midthick_file: path )
-               (subject_ID: str, hemi: [lh, rh], gifti_sphere_file: path)  
-
-    */
     input:
     tuple val(sub), val(hemi), path(fs_white), path(fs_pial), path(fs_sphere), path(resample_sphere)
 
     output:
     tuple val(sub), val(hemi), path("${sub}.${hemi}.midthickness.surf.gii"), emit: current_midthickness
-    tuple val(sub), val(hemi), path("${sub}.*.midthickness.*_fs_LR.surf.gii"), emit: new_midthickness
-    tuple val(sub), val(hemi), path("${sub}.${hemi}.sphere.reg.surf.gii", emit: current_gifti_sphere)
-
+    tuple val(sub), val(hemi), path("${sub}.${hemi}.midthickness.32k_fs_LR.surf.gii"), emit: new_midthickness
+    tuple val(sub), val(hemi), path("${hemi}.sphere.reg.surf.gii"), emit: current_gifti_sphere
+    
     shell:
     '''
-    hcp_hemi=$(echo !{hemi} | cut -c 1 | tr "[:lower:]" "[:upper:]"
-    hcp_vertices=$(echo !{resample_sphere} | grep -oE "[0-9]+k")
-
     wb_shortcuts -freesurfer-resample-prep !{fs_white} !{fs_pial} !{fs_sphere} !{resample_sphere} \
-                                           !{sub}.!{hemi}.midthickness.surf.gii \
-                                           !{sub}.!{hcp_hemi}.midthickness.!{hcp_vertices}_fs_LR.surf.gii \
-                                           !{sub}.!{hemi}.sphere.reg.surf.gii
-    '''
-}    
+    !{sub}.!{hemi}.midthickness.surf.gii \
+    !{sub}.!{hemi}.midthickness.32k_fs_LR.surf.gii \
+    !{hemi}.sphere.reg.surf.gii
+    ''' 
+}
 
 process metric_resample{
-
-    label 'workbench'
+    label 'connectome'
 
     input:
-    tuple val(sub), val(hemi), path(gifti_file), path(current_sphere_file),\
-     path(resample_sphere), path(current_midthickness_file), path(new_midthickness_file)
+    tuple val(sub), val(hemi), path(gifti_file), path(current_sphere_file), path(resample_sphere), path(current_midthickness_file), path(new_midthickness_file)
 
     output:
-    tupe val(sub), val(hemi), path("${sub}.E.norm.*.*_fs_LR.func.gii"), emit:e_norm_resampled
-
+    tuple val(sub), val(hemi), path("${sub}.E.norm.${hemi}.32k_fs_LR.func.gii"), emit: new_enorm_resampled
+    
     shell:
     '''
-    hcp_hemi=$(echo !{hemi} | cut -c 1 | tr "[:lower:]" "[:upper:]"
-    hcp_vertices=$(echo !{resample_sphere} | grep -oE "[0-9]+k")
-
     wb_command -metric-resample !{gifti_file} !{current_sphere_file} !{resample_sphere} \
-    ADAP_BARY_AREA !{sub}.E.norm.!{hcp_hemi}.!{hcp_vertices}_fs.LR.func.gii \
-    -area-surf !{current_midthickness_file} !{new_midthickness_file}
-    '''  
+    ADAP_BARY_AREA !{sub}.E.norm.!{hemi}.32k_fs_LR.func.gii \
+    -area-surfs !{current_midthickness_file} !{new_midthickness_file}
+    ''' 
 }
 
 process create_dense_scalar{
-    label 'workbench'
+    label 'connectome'
 
     input:
     tuple val(sub), path(resampled_L_file), path(resampled_R_file)
@@ -109,7 +83,7 @@ process create_dense_scalar{
     shell:
     '''
     wb_command -cifti-create-dense-scalar !{sub}.norm.E.32k_fs_LR.dscalar.nii \
-    -left-metric !{resampled_L_file} -right-metric !{resample_R_file}
+    -left-metric !{resampled_L_file} -right-metric !{resampled_R_file}
     '''
 }
 
@@ -135,14 +109,6 @@ workflow simnibs2cifti{
 
     main:
 
-        // join works like a table join. It'll link up channels using a key (subject_ID)
-        // map is like python/R's `map` function where you can apply a function
-        // to each item in a channel
-        // each item in the joined channel is a tuple of
-        // (subject, hemisphere, freesurfer_directory, simulation_file)
-	
-    
-
 	    split_hemi = fs_dir.multiMap { sub, fs -> 
                                 left: [sub, "lh", "${fs}/surf/lh.white" ]
 						        right: [sub, "rh", "${fs}/surf/rh.white" ]
@@ -151,18 +117,11 @@ workflow simnibs2cifti{
         sim_inputs = simfiles.transpose().map { s, sim -> [s, (sim =~ ~/[l,r]h/)[0], sim]}
 
         i_fs_to_gifti = split_hemi.left.mix(split_hemi.right).join(sim_inputs,by:[0,1])
-
         fs_to_gifti(i_fs_to_gifti)
 
-        // fs_to_gifti.out.gifti <- method to access output variable of process
-        // you can pipe (|) variables into functions like `view`, which will display
-        // the channel
-
-        //fs_to_gifti.out.gifti | view
-
         fs_files = fs_dir.multiMap { sub, fs -> 
-                left: [ sub, "lh", "${fs}/surf/lh.white", "${fs}/surf/lh.pial", "${fs}/surf/lh.sphere" ]
-                right: [ sub, "rh", "${fs}/surf/rh.white", "${fs}/surf/rh.pial", "${fs}/surf/rh.shpere" ]
+                left: [ sub, "lh", "${fs}/surf/lh.white", "${fs}/surf/lh.pial", "${fs}/surf/lh.sphere.reg" ]
+                right: [ sub, "rh", "${fs}/surf/rh.white", "${fs}/surf/rh.pial", "${fs}/surf/rh.sphere.reg" ]
                 }
 
         fs_input = fs_files.left.mix(fs_files.right)
@@ -178,27 +137,23 @@ workflow simnibs2cifti{
                                         [hemi, sub, white, pial, sphere]}.join(atlas_input,by:[0]).map 
                                         { hemi, sub, white, pial, sphere, atlas -> 
                                         [sub, hemi, white, pial, sphere, atlas]}
-        
-        freesurfer_prep(i_freesurfer_prep)
-                               
-        // fs_to_gifti.out.gifti  [sub, hemi, shape.gii]
-        // freesurfer_prep.out.current_gifti_sphere [sub, hemi, current_sphere)
-        // freesurfer_prep.out.current_midthickness [sub, hemi, current_midthickness]
-        // freesurfer_prep.out.new_midthickness [sub, hemi, new_fs_32k_midthickness]
 
-        i_metric_resample = fs_to_gifti.out.gifti.join(freesurfer_prep.out.current_gifti_sphere, by:[0,1]) //[sub,hemi,gifti,current_sphere]
+        freesurfer_prep(i_freesurfer_prep)
+
+        i_metric_resample = fs_to_gifti.out.gifti.join(freesurfer_prep.out.current_gifti_sphere, by:[0,1])
                                                  .map { sub, hemi, gifti, current_sphere -> [hemi, sub, gifti, current_sphere]}.join(atlas_input,by:[0])
-                                                 .map { hemi, sub, gifti, current_sphere, atlas -> [ sub, hemi, gifti, current_sphere, atlas]} //[sub,hemi,gifti,current_sphere,atlas]
-                                                 .join(freesurfer_prep.out.current_midthickness,by:[0,1]) // [sub, hemi, gifti, current_sphere, atlas, current_midthickness]
-                                                 .join(freesurfer_prep.out.new_midthickness, by:[0,1]) // [sub, hemi, gifti, current_sphere, atlas, current_midthickness, new_midthickness]
+                                                 .map { hemi, sub, gifti, current_sphere, atlas -> [ sub, hemi, gifti, current_sphere, atlas]}
+                                                 .join(freesurfer_prep.out.current_midthickness,by:[0,1])
+                                                 .join(freesurfer_prep.out.new_midthickness, by:[0,1])
 
         metric_resample(i_metric_resample)
-	    i_create_dense_scalar = metric_resample.out.e_norm_resampled.groupTuple(by: [0], sort:true)
-                                                                    .map { it.flatten() }.map { s, hL, hR, rL, rR -> [s, rL, rR]}
+    
+	    i_create_dense_scalar = metric_resample.out.new_enorm_resampled.map{s,h,f -> [s,f]}.groupTuple(by: 0, sort: {it.baseName}).map { it.flatten() }
+
         create_dense_scalar(i_create_dense_scalar)
 
     emit:
-	    sim_dscalar = create_dense_scalar.out.sim_dscalar    
+        sim_dscalar = create_dense_scalar.out.sim_dscalar    
 
 
     // The final output to return from this workflow
