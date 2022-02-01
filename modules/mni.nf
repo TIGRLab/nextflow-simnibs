@@ -60,7 +60,6 @@ process antsRegistration {
 
 }
 
-// TODO
 process antsRegistrationQC{
 /* Generate QC image for ANTs registration
 *
@@ -68,7 +67,6 @@ process antsRegistrationQC{
 *   subject (String): Subject identifier key
 *   moving (Path): moving image
 *   fixed (Path): fixed image
-*   config (Path): Path to Niviz config file
 *
 * Output:
 *   qcImage (Queue): [subject,
@@ -78,13 +76,18 @@ process antsRegistrationQC{
     label 'niviz'
 
     input:
-    tuple val(subject), path(moving), path(fixed), path(config)
+    tuple val(subject), path(moving), path(fixed)
 
     output:
-    tuple val(subject), path("${sub}*svg"), emit: qcImage
+    tuple val(subject), path("${subject}_qc-registration.svg"), emit: qcImage
 
     shell:
     '''
+    niviz single \
+        registration \
+        --set bg_nii=!{fixed} \
+        --set fg_nii=!{moving} \
+        !{subject}_qc-registration.svg
     '''
 }
 
@@ -101,6 +104,8 @@ process _antsWarpInfoMatrix{
     *   transform (Path): Coordinate transform used in warpfile
     */
 
+    label 'ants'
+
     input:
     tuple val(subject), path(warpFile)
 
@@ -110,7 +115,7 @@ process _antsWarpInfoMatrix{
     shell:
     '''
     antsTransformInfo !{warpFile} | grep -m 1 -A 3 "Direction" | sed 1d | \
-        tr ' ' ',' > transform.csv
+        tr ' ' '    ,' > transform.csv
     '''
 }
 
@@ -304,8 +309,13 @@ workflow registerFreesurferToMNI {
                 .combine(mni)
         )
 
+        antsRegistrationQC(
+            antsRegistration.out.warped.combine(mni)
+        )
+
     emit:
         warped = antsRegistration.out.warped
         warp = antsRegistration.out.warp
         inverseWarp = antsRegistration.out.inverseWarp
+        qcImage = antsRegistrationQC.out.qcImage
 }

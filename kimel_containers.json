@@ -3,6 +3,7 @@
 	"connectome_img": "/archive/code/containers/FMRIPREP_CIFTIFY/tigrlab_fmriprep_ciftify_v1.3.2-2.3.3-2019-08-16-c0fcb37f1b56.simg",
 	"freesurfer_img": "/archive/code/containers/FREESURFER/bids_freesurfer_v6.0.1-4-2018-04-22-77961085015a.img",
 	"license": "/opt/quarantine/freesurfer/6.0.1/build/",
-	"simnibs_img": "/projects/jjeyachandra/simnibs-docker/simnibs_v3.2.5-2022-01-24-583861ac4b8a.simg",
-	"atlas_dir": "/projects/ttan/UBC-TMS/simnibs_2_CIFTI/standard_mesh_atlases/resample_fsaverage"
+	"atlas_dir": "/projects/ttan/UBC-TMS/simnibs_2_CIFTI/standard_mesh_atlases/resample_fsaverage",
+	"simnibs_img": "/projects/jjeyachandra/simnibs-docker/simnibs_v3.2.5-2022-01-25-e606076a1374.simg",
+	"niviz_img":  "/projects/jjeyachandra/singularity_imgs/niviz_dev-2022-02-01-a50f62935533.simg"
 }
