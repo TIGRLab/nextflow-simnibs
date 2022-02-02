@@ -23,10 +23,8 @@ process placeCoil{
         !{coordinate} \
         !{mesh} \
         !{twist} \
-        !{sub}_coilPos.npy
-
-    # TODO: After adding container with meshplot
-    #--qc-file !{sub}_coilQC.html
+        !{sub}_coilPos.npy \
+        --qc-file !{sub}_coilQC.html
     '''
 }
 
@@ -84,6 +82,7 @@ workflow runSimulate{
 
 
     emit:
+        qcFile = placeCoil.out.qcFile
         simMsh = simulate.out.simMsh
         simGeo = simulate.out.simGeo
         leftGifti = simulate.out
