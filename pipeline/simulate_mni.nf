@@ -1,6 +1,7 @@
 nextflow.preview.dsl = 2
 
 include {registerFreesurferToMNI; antsApplyWarpToCoordinates; antsToNumpy } from "../modules/mni.nf"
+include { simnibs2cifti } from "../modules/map_to_cifti.nf"
 include { getArgumentParser } from "../lib/args"
 include { runSimulate } from "../modules/simulate.nf"
 
@@ -43,6 +44,8 @@ parser.addOptional("--mni_standard",
     "Path to MNI standard registration target, required if --warp_files not provided",
     "MNI_STANDARD")
 
+parser.addOptional("--create_cifti", "Generate CIFTI outputs")
+
 
 missingArgs = parser.isMissingRequired()
 if (params.help){
@@ -70,6 +73,10 @@ if (params.warps_file){
 
 if (params.subjects){
     log.info("Using subjects file: $params.subjects")
+}
+
+if (params.create_cifti){
+    log.info("Will output CIFTI files")
 }
 
 fs_input = Channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
@@ -127,6 +134,24 @@ workflow getOrCreateWarps{
         warps = warps
 }
 
+workflow createCifti {
+    take:
+        simulation_files
+        fs_dir
+
+    main:
+        simnibs2cifti(
+            simulation_files,
+            fs_dir,
+            Channel.of(params.atlas_dir)
+        )
+
+        //add a publish command
+
+    emit:
+        dscalar = simnibs2cifti.out.sim_dscalar
+}
+
 workflow {
 
     main:
@@ -147,5 +172,14 @@ workflow {
             m2m_input,
             Channel.of(params.twist),
             Channel.fromPath(params.coil)
-        )
+           )
+
+        if (params.create_cifti){
+            createCifti(
+                runSimulate.out.rightSurf
+                    .mix(runSimulate.out.leftSurf)
+                    .map{ s, surfs -> [s, surfs.norm] },
+                fs_input
+            )
+        }
 }
