@@ -1,7 +1,8 @@
 {
 	"ants_img": "/archive/code/containers/ANTS/ants_2.3.1-2022-01-14-fae71a4a2030.simg",
-	"connectome_img": "/archive/code/containers/connectome_workbench_v1.4.2-2021-04-21-6e87d12abe92.simg",
+	"connectome_img": "/archive/code/containers/FMRIPREP_CIFTIFY/tigrlab_fmriprep_ciftify_v1.3.2-2.3.3-2019-08-16-c0fcb37f1b56.simg",
 	"freesurfer_img": "/archive/code/containers/FREESURFER/bids_freesurfer_v6.0.1-4-2018-04-22-77961085015a.img",
-	"simnibs_img": "/projects/jjeyachandra/simnibs-docker/simnibs_v3.2.5-2022-01-25-e606076a1374.simg",
-	"atlas_dir": "/projects/jjeyachandra/simmibs_2_CIFTI/standard_mesh_atlases"
+	"license": "/opt/quarantine/freesurfer/6.0.1/build/",
+	"simnibs_img": "/projects/jjeyachandra/simnibs-docker/simnibs_v3.2.5-2022-01-24-583861ac4b8a.simg",
+	"atlas_dir": "/projects/ttan/UBC-TMS/simnibs_2_CIFTI/standard_mesh_atlases/resample_fsaverage"
 }
