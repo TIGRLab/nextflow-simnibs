@@ -73,10 +73,6 @@ if (params.subjects) {
     log.info("Subject list file provided: $params.subjects")
 }
 
-// Extract subject directories to run
-//input_dirs = new File(params.mri2mesh_dir).list()
-//simul_dirs = new File(params.simulation_dir).list()
-
 fs_input = channel.fromPath("$params.mri2mesh_dir/fs_sub-*", type: 'dir')
 						.map{i -> [i.getBaseName() - ~/^fs_/, i]}
 
