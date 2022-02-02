@@ -156,5 +156,4 @@ workflow simnibs2cifti{
         sim_dscalar = create_dense_scalar.out.sim_dscalar    
 
 
-    // The final output to return from this workflow
 }
