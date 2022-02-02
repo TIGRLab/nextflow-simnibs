@@ -39,7 +39,6 @@ nextflow run pipeline/<pipeline>.nf -c <repo_dir>/config/base.nf.config \
 nextflow run simulate_mni.nf -c config/base.nf.config -params-file parameters.json \
 	--out_dir path/to/out \
 	--mri2mesh_dir path/to/mri2mesh/outputs \
-	--create_cifti \
 	--mni_coordinates 30,43,23 --twist 155 \
 	--coil /path/to/coil \
 	--create_cifti -profile local
