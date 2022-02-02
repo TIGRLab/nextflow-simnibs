@@ -86,7 +86,6 @@ process create_dense_scalar{
     '''
 }
 
-// Make a process for each step in the simnibs_2_cifti_surface script
 
 workflow simnibs2cifti{
     /*
