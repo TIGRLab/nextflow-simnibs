@@ -36,7 +36,8 @@ nextflow run pipeline/<pipeline>.nf -c <repo_dir>/config/base.nf.config \
 
 **Run simulation using MNI coordinates and obtain CIFTI files**
 ```
-nextflow run simulate_mni.nf -c config/base.nf.config -params-file parameters.json \
+nextflow run pipeline/simulate_mni.nf \
+	-c config/base.nf.config -params-file parameters.json \
 	--out_dir path/to/out \
 	--mri2mesh_dir path/to/mri2mesh/outputs \
 	--mni_coordinates 30,43,23 --twist 155 \
@@ -48,5 +49,7 @@ nextflow run simulate_mni.nf -c config/base.nf.config -params-file parameters.js
 **Help**
 
 ```
-nextflow run [mni_transform.nf|simnibs_dscalar.nf|simulate_mni.nf] -c config/base.nf.config --help
+nextflow run pipeline/[mni_transform.nf|simnibs_dscalar.nf|simulate_mni.nf] \
+	-c config/base.nf.config \
+	--help
 ```
