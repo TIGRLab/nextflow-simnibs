@@ -6,7 +6,7 @@
 process antsRegistration {
 
     /*
-    * ANTS settings from 
+    * ANTS settings from
     * https://github.com/nipreps/niworkflows/blob/master/niworkflows/data/t1w-mni_registration_precise_000.json
     *
     * Arguments:
@@ -15,7 +15,7 @@ process antsRegistration {
     *   mni (path): Path to fixed 3D image (registration target)
     *
     * Outputs:
-    *   warped (queue): (sub, warped) Warped moving image 
+    *   warped (queue): (sub, warped) Warped moving image
     *   warp (queue): (sub, warp) Forward warp field
     *   inverseWarp (queue): (sub, warp) Inverse warp field
     */
@@ -57,7 +57,38 @@ process antsRegistration {
         --winsorize-image-intensities [ 0.005, 0.995 ]  --write-composite-transform 1 \
         -v
     '''
-    
+
+}
+
+process antsRegistrationQC{
+/* Generate QC image for ANTs registration
+*
+* Arguments:
+*   subject (String): Subject identifier key
+*   moving (Path): moving image
+*   fixed (Path): fixed image
+*
+* Output:
+*   qcImage (Queue): [subject,
+*                     Path qcImage] : Path to QC image]
+*/
+
+    label 'niviz'
+
+    input:
+    tuple val(subject), path(moving), path(fixed)
+
+    output:
+    tuple val(subject), path("${subject}_qc-registration.svg"), emit: qcImage
+
+    shell:
+    '''
+    niviz single \
+        registration \
+        --set bg_nii=!{fixed} \
+        --set fg_nii=!{moving} \
+        !{subject}_qc-registration.svg
+    '''
 }
 
 process _antsWarpInfoMatrix{
@@ -72,6 +103,8 @@ process _antsWarpInfoMatrix{
     *   warpFile (Path): Warpfile
     *   transform (Path): Coordinate transform used in warpfile
     */
+
+    label 'ants'
 
     input:
     tuple val(subject), path(warpFile)
@@ -276,8 +309,13 @@ workflow registerFreesurferToMNI {
                 .combine(mni)
         )
 
+        antsRegistrationQC(
+            antsRegistration.out.warped.combine(mni)
+        )
+
     emit:
         warped = antsRegistration.out.warped
         warp = antsRegistration.out.warp
         inverseWarp = antsRegistration.out.inverseWarp
+        qcImage = antsRegistrationQC.out.qcImage
 }
