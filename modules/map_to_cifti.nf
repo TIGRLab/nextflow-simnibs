@@ -145,7 +145,7 @@ workflow simnibs2cifti{
 
         metric_resample(i_metric_resample)
     
-	    i_create_dense_scalar = metric_resample.out.new_enorm_resampled.map{s,h,f -> [s,f]}.groupTuple(by: 0, sort: {it.baseName}).map { it.flatten() }
+	i_create_dense_scalar = metric_resample.out.new_enorm_resampled.map{s,h,f -> [s,f]}.groupTuple(by: 0, sort: {it.baseName}).map { it.flatten() }
 
         create_dense_scalar(i_create_dense_scalar)
 
