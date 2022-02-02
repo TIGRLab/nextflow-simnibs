@@ -16,6 +16,11 @@ parser.addArgument("--mri2mesh_dir",
     params.mri2mesh_dir.toString(),
     "MRI2MESH")
 
+parser.addArgument("--out_dir",
+    "Path to output directory",
+    params.out_dir.toString(),
+    "OUTDIR")
+
 parser.addArgument("--ants_img",
     "Path to ANTS Singularity image",
     params.ants_img.toString(),
@@ -101,6 +106,90 @@ if (params.subjects){
 fs_input.join(m2m_input, failOnMismatch: true)
         .join(mesh_input, failOnMismatch: true)
 
+process publishRegistration{
+/*
+* Publish registration outputs
+*
+* Argument:
+*   warped: T1 warped into MNI
+*   warp: Forward warp file
+*   inverseWarp: Inverse warp file
+*   qcSvg: Quality control SVG file
+*/
+    publishDir path: "${params.out_dir}/mniSimulation/${sub}/mniRegistration", \
+                mode: 'copy', \
+                overwrite: true
+
+    input:
+    tuple val(sub), path(warped), path(warp), path(inverseWarp), path(qcSvg)
+
+    output:
+    tuple val(sub), path(warped), path(warp), path(inverseWarp), path(qcSvg)
+
+    shell:
+    '''
+    echo "Moving outputs into !{params.out_dir}/mniSimulation/!{sub}/mniRegistration"
+    '''
+}
+
+process publishSimulations{
+/*
+* Publish outputs into `params.out_dir`
+*
+* Arguments:
+*   simFile: SimNIBS .msh file
+*   simGeo: SimNIBS coil placement .geo file
+*   leftSurf: SimNIBS native subject overlay lh
+*   rightSurf: SimNIBS native subject overlay rh
+*   leftFsavgSurf: SimNIBS fsavg overlay lh
+*   rightFsavgSurf: SimNIBS fsavg overlay rh
+*   qcHtml: Coil placement QC HTML file
+*/
+
+    publishDir path: "${params.out_dir}/mniSimulation/${sub}/simulations", \
+                mode: 'copy', \
+                overwrite: true
+
+    input:
+    tuple val(sub), path(simFile), path(simGeo),\
+    path(leftSurf), path(rightSurf),\
+    path(leftFsavgSurf), path(rightFsavgSurf),\
+    path(qcHtml)
+
+    output:
+    tuple val(sub), path(simFile), path(simGeo),\
+    path(leftSurf), path(rightSurf),\
+    path(leftFsavgSurf), path(rightFsavgSurf),\
+    path(qcHtml)
+
+    shell:
+    '''
+    echo "Publishing to !{params.out_dir}/mniSimulation/!{sub}/simulations"
+    '''
+
+}
+
+process publishCifti{
+/* Publish CIFTI dscalar outputs
+* Arguments:
+*   dscalar: CIFTI dscalar file
+*/
+    publishDir path: "${params.out_dir}/mniSimulation/${sub}/", \
+                mode: 'copy', \
+                overwrite: true
+
+    input:
+    tuple val(sub), path(cifti)
+
+    output:
+    tuple val(sub), path(cifti)
+
+    shell:
+    '''
+    echo "Publishing to !{params.out_dir}/mniSimulation/!{sub}"
+    '''
+}
+
 workflow getOrCreateWarps{
 /*
 * Obtain Freesurfer to MNI warps
@@ -121,13 +210,21 @@ workflow getOrCreateWarps{
             registerFreesurferToMNI(fs_input, Channel.of(params.mni_standard))
             warps = registerFreesurferToMNI.out.warp
                         .join(registerFreesurferToMNI.out.inverseWarp)
-                        .map { s, w, iw ->
+                        .join(registerFreesurferToMNI.out.warped)
+                        .join(registerFreesurferToMNI.out.qcImage)
+                        .map { s, w, iw, warped, qc ->
                             [
                                 subject: s,
                                 warp: w,
-                                inverseWarp: iw
+                                inverseWarp: iw,
+                                warped: warped, 
+                                qcImage: qc
                             ]
                         }
+            publishRegistration(
+                warps.map { w -> [w.subject, w.warped, w.warp, w.inverseWarp, w.qcImage] }
+            )
+                            
         }
 
     emit:
@@ -146,7 +243,7 @@ workflow createCifti {
             Channel.of(params.atlas_dir)
         )
 
-        //add a publish command
+        publishCifti(simnibs2cifti.out.sim_dscalar)
 
     emit:
         dscalar = simnibs2cifti.out.sim_dscalar
@@ -173,6 +270,16 @@ workflow {
             Channel.of(params.twist),
             Channel.fromPath(params.coil)
            )
+
+        publishSimulations(
+            runSimulate.out.simMsh
+                .join(runSimulate.out.simGeo)
+                .join(runSimulate.out.leftSurf.map{ sub, surf -> [sub, surf.norm]})
+                .join(runSimulate.out.rightSurf.map{ sub, surf -> [sub, surf.norm]})
+                .join(runSimulate.out.leftFsavgSurf.map{ sub, surf -> [sub, surf.norm]})
+                .join(runSimulate.out.rightFsavgSurf.map{ sub, surf -> [sub, surf.norm]})
+                .join(runSimulate.out.qcFile)
+        )
 
         if (params.create_cifti){
             createCifti(

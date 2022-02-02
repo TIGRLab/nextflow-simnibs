@@ -78,11 +78,6 @@ workflow runSimulate{
                 .join(fs_path)
         )
 
-
-
-
-
-
     emit:
         qcFile = placeCoil.out.qcFile
         simMsh = simulate.out.simMsh
