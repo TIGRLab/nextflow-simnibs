@@ -102,7 +102,6 @@ workflow simnibs2cifti{
     take:
         simfiles
         fs_dir
-    //    cifti_dir
         atlas_dir
 
     main:
