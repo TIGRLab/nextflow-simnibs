@@ -33,7 +33,6 @@ process fs_to_gifti{
 }
 
 
-// To define
 process freesurfer_prep{
     label 'connectome'
 
