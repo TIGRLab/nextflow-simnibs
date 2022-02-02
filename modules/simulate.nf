@@ -38,8 +38,10 @@ process simulate{
     output:
     tuple val(sub), path("${sub}_TMS*.msh"), emit: simMsh
     tuple val(sub), path("${sub}_TMS*.geo"), emit: simGeo
-    tuple val(sub), path("fsavg_overlays/lh.*"), emit: leftSim
-    tuple val(sub), path("fsavg_overlays/rh.*"), emit: rightSim
+    tuple val(sub), path("fsavg_overlays/lh.${sub}*"), emit: leftFsavgSim
+    tuple val(sub), path("fsavg_overlays/rh.${sub}*"), emit: rightFsavgSim
+    tuple val(sub), path("subject_overlays/lh.${sub}*"), emit: leftSim
+    tuple val(sub), path("subject_overlays/rh.${sub}*"), emit: rightSim
 
     shell:
     '''
@@ -76,24 +78,33 @@ workflow runSimulate{
                 .join(fs_path)
         )
 
-
-
-
-
-
     emit:
         qcFile = placeCoil.out.qcFile
         simMsh = simulate.out.simMsh
         simGeo = simulate.out.simGeo
-        leftGifti = simulate.out
+        leftSurf = simulate.out
                         .leftSim.map {sub, fields -> [
                             sub,
                             fields.collectEntries{
                                 [it.getName().split("\\.")[ -1 ], it]
                             }
                         ]}
-        rightGifti = simulate.out
+        rightSurf = simulate.out
                         .rightSim.map {sub, fields -> [
+                            sub,
+                            fields.collectEntries{
+                                [it.getName().split("\\.")[ -1 ], it]
+                            }
+                        ]}
+        leftFsavgSurf = simulate.out
+                        .leftFsavgSim.map {sub, fields -> [
+                            sub,
+                            fields.collectEntries{
+                                [it.getName().split("\\.")[ -1 ], it]
+                            }
+                        ]}
+        rightFsavgSurf = simulate.out
+                        .rightFsavgSim.map {sub, fields -> [
                             sub,
                             fields.collectEntries{
                                 [it.getName().split("\\.")[ -1 ], it]

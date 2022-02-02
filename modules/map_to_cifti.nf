@@ -42,15 +42,17 @@ process freesurfer_prep{
     output:
     tuple val(sub), val(hemi), path("${sub}.${hemi}.midthickness.surf.gii"), emit: current_midthickness
     tuple val(sub), val(hemi), path("${sub}.${hemi}.midthickness.32k_fs_LR.surf.gii"), emit: new_midthickness
-    tuple val(sub), val(hemi), path("${hemi}.sphere.reg.surf.gii"), emit: current_gifti_sphere
-    
+    tuple val(sub), val(hemi), path("${sub}.${hemi}.sphere.reg.surf.gii"), emit: current_gifti_sphere
+
     shell:
     '''
     wb_shortcuts -freesurfer-resample-prep !{fs_white} !{fs_pial} !{fs_sphere} !{resample_sphere} \
     !{sub}.!{hemi}.midthickness.surf.gii \
     !{sub}.!{hemi}.midthickness.32k_fs_LR.surf.gii \
     !{hemi}.sphere.reg.surf.gii
-    ''' 
+
+    mv !{hemi}.sphere.reg.surf.gii !{sub}.!{hemi}.sphere.reg.surf.gii
+    '''
 }
 
 process metric_resample{
@@ -61,13 +63,13 @@ process metric_resample{
 
     output:
     tuple val(sub), val(hemi), path("${sub}.E.norm.${hemi}.32k_fs_LR.func.gii"), emit: new_enorm_resampled
-    
+
     shell:
     '''
     wb_command -metric-resample !{gifti_file} !{current_sphere_file} !{resample_sphere} \
     ADAP_BARY_AREA !{sub}.E.norm.!{hemi}.32k_fs_LR.func.gii \
     -area-surfs !{current_midthickness_file} !{new_midthickness_file}
-    ''' 
+    '''
 }
 
 process create_dense_scalar{
@@ -105,52 +107,70 @@ workflow simnibs2cifti{
         atlas_dir
 
     main:
+        split_hemi = fs_dir.multiMap {
+            sub, fs ->
+                left: [sub, "lh", "${fs}/surf/lh.white"]
+                right: [sub, "rh", "${fs}/surf/rh.white"]
+        }
 
-	    split_hemi = fs_dir.multiMap { sub, fs -> 
-                                left: [sub, "lh", "${fs}/surf/lh.white" ]
-						        right: [sub, "rh", "${fs}/surf/rh.white" ]
-				}
-	
-        sim_inputs = simfiles.transpose().map { s, sim -> [s, (sim =~ ~/[l,r]h/)[0], sim]}
+        sim_inputs = simfiles.transpose()
+            .map { s, sim -> [s, (sim =~ ~/[l,r]h/)[0], sim]}
 
-        i_fs_to_gifti = split_hemi.left.mix(split_hemi.right).join(sim_inputs,by:[0,1])
+        i_fs_to_gifti = split_hemi.left.mix(split_hemi.right)
+            .join(sim_inputs,by:[0,1])
+
         fs_to_gifti(i_fs_to_gifti)
 
-        fs_files = fs_dir.multiMap { sub, fs -> 
-                left: [ sub, "lh", "${fs}/surf/lh.white", "${fs}/surf/lh.pial", "${fs}/surf/lh.sphere.reg" ]
-                right: [ sub, "rh", "${fs}/surf/rh.white", "${fs}/surf/rh.pial", "${fs}/surf/rh.sphere.reg" ]
+        fs_files = fs_dir.multiMap { sub, fs ->
+                left: [ sub, "lh",
+                        "${fs}/surf/lh.white", "${fs}/surf/lh.pial",
+                        "${fs}/surf/lh.sphere.reg" ]
+                right: [ sub, "rh",
+                        "${fs}/surf/rh.white", "${fs}/surf/rh.pial",
+                        "${fs}/surf/rh.sphere.reg" ]
                 }
 
         fs_input = fs_files.left.mix(fs_files.right)
 
-        atlas_files = atlas_dir.multiMap { i -> 
+        atlas_files = atlas_dir.multiMap { i ->
                 left: ["lh", "${i}/fs_LR-deformed_to-fsaverage.L.sphere.32k_fs_LR.surf.gii" ]
                 right: ["rh", "${i}/fs_LR-deformed_to-fsaverage.R.sphere.32k_fs_LR.surf.gii"]
                 }
 
         atlas_input = atlas_files.left.mix(atlas_files.right)
 
-        i_freesurfer_prep = fs_input.map { sub, hemi, white, pial, sphere -> 
-                                        [hemi, sub, white, pial, sphere]}.join(atlas_input,by:[0]).map 
-                                        { hemi, sub, white, pial, sphere, atlas -> 
-                                        [sub, hemi, white, pial, sphere, atlas]}
+        i_freesurfer_prep = fs_input
+            .map { sub, hemi, white, pial, sphere ->
+                [hemi, sub, white, pial, sphere]
+            }
+            .combine(atlas_input,by:[0])
+            .map { hemi, sub, white, pial, sphere, atlas ->
+                [sub, hemi, white, pial, sphere, atlas]
+            }
 
         freesurfer_prep(i_freesurfer_prep)
 
-        i_metric_resample = fs_to_gifti.out.gifti.join(freesurfer_prep.out.current_gifti_sphere, by:[0,1])
-                                                 .map { sub, hemi, gifti, current_sphere -> [hemi, sub, gifti, current_sphere]}.join(atlas_input,by:[0])
-                                                 .map { hemi, sub, gifti, current_sphere, atlas -> [ sub, hemi, gifti, current_sphere, atlas]}
-                                                 .join(freesurfer_prep.out.current_midthickness,by:[0,1])
-                                                 .join(freesurfer_prep.out.new_midthickness, by:[0,1])
+        i_metric_resample = fs_to_gifti.out.gifti
+            .join(freesurfer_prep.out.current_gifti_sphere, by:[0,1])
+            .map { sub, hemi, gifti, current_sphere ->
+                [hemi, sub, gifti, current_sphere]}
+            .combine(atlas_input,by:[0])
+            .map { hemi, sub, gifti, current_sphere, atlas ->
+                [ sub, hemi, gifti, current_sphere, atlas]}
+            .join(freesurfer_prep.out.current_midthickness,by:[0,1])
+            .join(freesurfer_prep.out.new_midthickness, by:[0,1])
 
         metric_resample(i_metric_resample)
-    
-	i_create_dense_scalar = metric_resample.out.new_enorm_resampled.map{s,h,f -> [s,f]}.groupTuple(by: 0, sort: {it.baseName}).map { it.flatten() }
+
+	i_create_dense_scalar = metric_resample.out.new_enorm_resampled
+            .map{s,h,f -> [s,f]}
+            .groupTuple(by: 0, sort: {it.baseName})
+            .map { it.flatten() }
 
         create_dense_scalar(i_create_dense_scalar)
 
     emit:
-        sim_dscalar = create_dense_scalar.out.sim_dscalar    
+        sim_dscalar = create_dense_scalar.out.sim_dscalar
 
 
 }

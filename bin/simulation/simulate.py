@@ -32,6 +32,7 @@ def main():
             "GIFTI output required but --m2m-path not supplied")
     else:
         s.map_to_fsavg = args.gifti
+        s.map_to_surf = args.gifti
         s.subpath = args.m2m_path
 
     tmslist = s.add_tmslist()
