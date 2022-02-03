@@ -91,7 +91,33 @@ if (params.subjects){
 
 }
 
+process publishCifti{
+/*
+* Publish simulation CIFTI dscalar outputs
+*
+* Argument:
+*   dscalar: CIFTI dscalar file
+*/
+    publishDir path: "${params.out_dir}/fsaverage_LR32k/${sub}/", \
+                mode: 'copy', \
+                overwrite: true
+
+	input:
+	tuple val(sub), path(sim_cifti)
+
+	output:
+	tuple val(sub), path(sim_cifti)
+
+	shell:
+	'''
+	echo "Publishing to !{params.out_dir}/fsaverage_LR32k/!{sub}"
+	'''
+
+
+}
+
 workflow {
 	main:
 		simnibs2cifti(simul_input, fs_input, atlas_input)
+		publishCifti(simnibs2cifti.out.sim_dscalar)
 }
