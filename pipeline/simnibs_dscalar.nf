@@ -99,8 +99,7 @@ process publishCifti{
 *   dscalar: CIFTI dscalar file
 */
     publishDir path: "${params.out_dir}/fsaverage_LR32k/${sub}/", \
-                mode: 'copy', \
-                overwrite: true
+                mode: 'copy'
 
 	input:
 	tuple val(sub), path(sim_cifti)
