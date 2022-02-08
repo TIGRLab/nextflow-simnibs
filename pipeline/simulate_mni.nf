@@ -117,8 +117,7 @@ process publishRegistration{
 *   qcSvg: Quality control SVG file
 */
     publishDir path: "${params.out_dir}/mniSimulation/${sub}/mniRegistration", \
-                mode: 'copy', \
-                overwrite: true
+                mode: 'copy'
 
     input:
     tuple val(sub), path(warped), path(warp), path(inverseWarp), path(qcSvg)
@@ -147,8 +146,7 @@ process publishSimulations{
 */
 
     publishDir path: "${params.out_dir}/mniSimulation/${sub}/simulations", \
-                mode: 'copy', \
-                overwrite: true
+                mode: 'copy'
 
     input:
     tuple val(sub), path(simFile), path(simGeo),\
@@ -175,8 +173,7 @@ process publishCifti{
 *   dscalar: CIFTI dscalar file
 */
     publishDir path: "${params.out_dir}/mniSimulation/${sub}/", \
-                mode: 'copy', \
-                overwrite: true
+                mode: 'copy'
 
     input:
     tuple val(sub), path(cifti)
