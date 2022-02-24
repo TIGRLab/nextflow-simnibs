@@ -48,9 +48,9 @@ parser.addOptional("--warps_file",
 parser.addOptional("--mni_standard",
     "Path to MNI standard registration target, required if --warp_files not provided",
     "MNI_STANDARD")
-parser.addOptional("--mt_file",
-    "Path to CSV file containing (subject, MT MSO) entries",
-    "MT_FILE")
+parser.addOptional("--didt_file",
+    "Path to CSV file containing (subject, DIDT) entries",
+    "DIDT_FILE")
 
 parser.addOptional("--create_cifti", "Generate CIFTI outputs")
 
@@ -236,8 +236,8 @@ workflow getOrCreateWarps{
 
 workflow getOrCreateDosage{
     main:
-        if (params.mt_file){
-            dosages = Channel.fromPath(params.mt_file)
+        if (params.didt_file){
+            dosages = Channel.fromPath(params.didt_file)
                         .splitCsv(header: ['subject', 'mt'])
             subjects.join(dosages, failOnMismatch: true)
         } else {
