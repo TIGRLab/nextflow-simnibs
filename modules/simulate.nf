@@ -33,7 +33,9 @@ process simulate{
     label 'bin'
 
     input:
-    tuple val(sub), path(mesh), path(matsimnibs), path(coil), path(m2m_path), path(fs_path)
+    tuple val(sub), path(mesh), path(matsimnibs),\
+    path(coil), path(m2m_path), path(fs_path),\
+    val(dosage)
 
     output:
     tuple val(sub), path("${sub}_TMS*.msh"), emit: simMsh
@@ -49,7 +51,8 @@ process simulate{
         !{mesh} \
         !{matsimnibs} \
         !{coil} \
-        --gifti --m2m-path !{m2m_path}
+        --gifti --m2m-path !{m2m_path} \
+        --dose !{dosage}
     '''
 }
 
@@ -63,6 +66,7 @@ workflow runSimulate{
         m2m_path
         twist
         coil
+        dosages
 
     main:
 
@@ -76,6 +80,7 @@ workflow runSimulate{
                 .combine(coil)
                 .join(m2m_path)
                 .join(fs_path)
+                .join(dosages)
         )
 
     emit:
