@@ -238,7 +238,7 @@ workflow getOrCreateDosage{
     main:
         if (params.didt_file){
             dosages = Channel.fromPath(params.didt_file)
-                        .splitCsv(header: ['subject', 'mt'])
+                        .splitCsv(header: ['subject', 'didt'])
             subjects.join(dosages, failOnMismatch: true)
         } else {
             dosages = subjects.combine([params.default_dose])
