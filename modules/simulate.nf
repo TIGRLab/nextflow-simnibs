@@ -52,7 +52,7 @@ process simulate{
         !{matsimnibs} \
         !{coil} \
         --gifti --m2m-path !{m2m_path} \
-        --dose !{dosage}
+        --dosage !{dosage}
     '''
 }
 
@@ -85,6 +85,7 @@ workflow runSimulate{
 
     emit:
         qcFile = placeCoil.out.qcFile
+        matsimnibs = placeCoil.out.matsimnibs
         simMsh = simulate.out.simMsh
         simGeo = simulate.out.simGeo
         leftSurf = simulate.out
