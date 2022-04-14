@@ -52,7 +52,6 @@ def get_matsimnibs(centre, n, twist):
                                                     cos(gamma), 0], [0, 0, 1]])
 
     # Get full rotation matrix of coil onto scalp plane
-    # @ is matrix multiplication
     R = R_ap @ R_lr @ R_tw
 
     # Invert normal and X to maintain right-handedness
@@ -98,7 +97,7 @@ def main():
     head_ind = head_ind - 1
 
     # Get centre at coil
-    coil_z = -head.mesh.nodes_normals().value[head_ind, :]
+    coil_z = head.mesh.nodes_normals().value[head_ind, :]
     msn = get_matsimnibs(head_coord, coil_z, args.twist)
     np.save(args.outfile, msn)
 
