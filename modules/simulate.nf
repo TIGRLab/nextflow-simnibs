@@ -85,6 +85,7 @@ workflow runSimulate{
 
     emit:
         qcFile = placeCoil.out.qcFile
+        matsimnibs = placeCoil.out.matsimnibs
         simMsh = simulate.out.simMsh
         simGeo = simulate.out.simGeo
         leftSurf = simulate.out
