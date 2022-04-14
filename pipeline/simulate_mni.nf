@@ -254,7 +254,9 @@ workflow {
     main:
         getOrCreateWarps()
 
-        coordinates = Channel.of(params.mni_coordinates).map { it.split(",") }
+        coordinates = Channel.of(params.mni_coordinates)
+            .map { it.strip("'").strip('"').split(",") }
+
         antsApplyWarpToCoordinates(
             coordinates,
             getOrCreateWarps.out.warps.map { [it.subject, it.warp] }
