@@ -48,6 +48,9 @@ parser.addOptional("--warps_file",
 parser.addOptional("--mni_standard",
     "Path to MNI standard registration target, required if --warp_files not provided",
     "MNI_STANDARD")
+parser.addOptional("--didt_file",
+    "Path to CSV file containing (subject, DIDT) entries",
+    "DIDT_FILE")
 
 parser.addOptional("--create_cifti", "Generate CIFTI outputs")
 
@@ -231,6 +234,20 @@ workflow getOrCreateWarps{
         warps = warps
 }
 
+workflow getOrCreateDosage{
+    main:
+        if (params.didt_file){
+            dosages = Channel.fromPath(params.didt_file)
+                        .splitCsv(header: ['subject', 'didt'])
+            subjects.join(dosages, failOnMismatch: true)
+        } else {
+            dosages = subjects.combine([params.default_dose])
+        }
+
+    emit:
+        dosages = dosages
+}
+
 workflow createCifti {
     take:
         simulation_files
@@ -264,13 +281,16 @@ workflow {
 
         antsToNumpy(antsApplyWarpToCoordinates.out.warpedCoordinates)
 
+        getOrCreateDosage()
+
         runSimulate(
             mesh_input,
             antsToNumpy.out.coords,
             fs_input,
             m2m_input,
             Channel.of(params.twist),
-            Channel.fromPath(params.coil)
+            Channel.fromPath(params.coil),
+            getOrCreateDosage.out.dosages
            )
 
         publishSimulations(

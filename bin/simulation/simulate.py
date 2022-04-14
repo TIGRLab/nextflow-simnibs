@@ -21,6 +21,10 @@ def main():
                         required=False,
                         type=str,
                         help="Path to m2m folder, required if using --gifti")
+    parser.add_argument("--dosage",
+                        required=False,
+                        type=float,
+                        help="TMS dosage to use (dI/dt)")
 
     args = parser.parse_args()
 
@@ -40,6 +44,7 @@ def main():
 
     pos = tmslist.add_position()
     pos.matsimnibs = np.load(args.matsimnibs)
+    pos.didt = float(args.dosage) if args.dosage else None
 
     s.run()
 
