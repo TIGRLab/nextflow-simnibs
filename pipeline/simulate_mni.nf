@@ -157,13 +157,13 @@ process publishSimulations{
     tuple val(sub), path(simFile), path(simGeo),\
     path(leftSurf), path(rightSurf),\
     path(leftFsavgSurf), path(rightFsavgSurf),\
-    path(qcHtml)
+    path(matsimnibs), path(qcHtml)
 
     output:
     tuple val(sub), path(simFile), path(simGeo),\
     path(leftSurf), path(rightSurf),\
     path(leftFsavgSurf), path(rightFsavgSurf),\
-    path(qcHtml)
+    path(matsimnibs), path(qcHtml)
 
     shell:
     '''
@@ -300,6 +300,7 @@ workflow {
                 .join(runSimulate.out.rightSurf.map{ sub, surf -> [sub, surf.norm]})
                 .join(runSimulate.out.leftFsavgSurf.map{ sub, surf -> [sub, surf.norm]})
                 .join(runSimulate.out.rightFsavgSurf.map{ sub, surf -> [sub, surf.norm]})
+                .join(runSimulate.out.matsimnibs)
                 .join(runSimulate.out.qcFile)
         )
 
