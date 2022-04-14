@@ -52,7 +52,7 @@ process simulate{
         !{matsimnibs} \
         !{coil} \
         --gifti --m2m-path !{m2m_path} \
-        --dose !{dosage}
+        --dosage !{dosage}
     '''
 }
 
