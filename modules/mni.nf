@@ -91,64 +91,18 @@ process antsRegistrationQC{
     '''
 }
 
-process _antsWarpInfoMatrix{
-    /*
-    * Transform input coordinates to match coordinate convention of warp
-    * Arguments:
-    *   subject (String): Subject key
-    *   warpFile (Path): Warpfile
-    *
-    * Outputs:
-    *   subject (String): Subject key
-    *   warpFile (Path): Warpfile
-    *   transform (Path): Coordinate transform used in warpfile
-    */
-
-    label 'ants'
-
-    input:
-    tuple val(subject), path(warpFile)
-
-    output:
-    tuple val(subject), path('transform.csv'), emit: transform
-
-    shell:
-    '''
-    antsTransformInfo !{warpFile} | grep -m 1 -A 3 "Direction" | sed 1d | \
-        tr ' ' ',' > transform.csv
-    '''
-}
-
 process _prepareCoordsForWarp{
 
-    label 'numpy'
-    label 'bin'
-    /*
-    * Transform coordinates with a rotation matrix
-    * Arguments:
-    *   subject (String): Subject key
-    *   matrix (Path): Path to rotation matrix
-    *   x (Float): X coordinates
-    *   y (Float): Y coordinates
-    *   z (Float): Z coordinates
-    * Outputs:
-    *   coords: (subject, Path coords): transformed coordinates
-    */
-
     input:
-    tuple val(subject), path(matrix), val(x), val(y), val(z)
+    tuple val(x), val(y), val(z)
 
     output:
-    tuple val(subject), path("${subject}_fixed_coords.csv"), emit: coords
+    path("lps_coords.csv"), emit: coordsCsv
 
     shell:
     '''
-    #!/bin/bash
-    printf "x,y,z,t\n!{x},!{y},!{z},0" > coords.txt
-    python /scripts/mni/transformCoords.py \
-        coords.txt \
-        !{matrix} \
-        !{subject}_fixed_coords.csv
+    echo "x,y,z,t" > lps_coords.csv
+    echo "!{x}, !{y}, !{z}, 0" >> lps_coords.csv
     '''
 }
 
@@ -184,38 +138,6 @@ process _antsApplyWarpToCoordinates{
     '''
 }
 
-process _untransformCoordinates{
-    /*
-    * Perform inverse transform of warp
-    * Arguments:
-    *   subject (String): subject key
-    *   matrix (Path): Path to transformation matrix file
-    *   coordinates (Path): Path to ants compatible coordinates file
-    *
-    * Outputs:
-    *   fixedCoordinates: (subject, Path fixed) warped coordinates with corrected orientation
-    */
-
-    label 'numpy'
-    label 'bin'
-
-    input:
-    tuple val(subject), path(matrix), path(coordinates)
-
-    output:
-    tuple val(subject), path("${subject}_warpedFixedCoordinates.csv"), emit: fixedCoordinates
-
-    shell:
-    '''
-    #!/bin/bash
-    python /scripts/mni/transformCoords.py \
-        !{coordinates} \
-        !{matrix} \
-        !{subject}_warpedFixedCoordinates.csv \
-        --invert
-    '''
-}
-
 process antsToNumpy{
     /*
     * Transform ANTS style CSV into numpy array
@@ -236,6 +158,11 @@ process antsToNumpy{
     import numpy as np
 
     a = np.loadtxt("!{antsCoords}", skiprows=1, delimiter=",")
+
+    # LPS --> RAS
+    a[:2] = -a[:2]
+
+    # Remove t
     np.save("!{subject}_coords.npy", a[:3])
     '''
 }
@@ -245,11 +172,11 @@ workflow antsApplyWarpToCoordinates{
 * ANTS apply transforms to coordinates workflow
 *
 * Arguments:
-*   coordinates (Channel): [subject, HashMap [x,y,z] coordinates]
+*   coordinates (Channel): [subject, [x,y,z] coordinates]
 *   warps (Channel): [subject, warpFile]
 *
 * Outputs:
-*   warpedCoordinates (Channel): [subject, HashMap [x,y,z] warpedCoordinates]
+*   warpedCoordinates (Channel): [subject, Path: warpedCoordinates]
 */
 
     take:
@@ -257,30 +184,14 @@ workflow antsApplyWarpToCoordinates{
         warps
 
     main:
-
-        // Get warp orientation transform and apply to coordinates
-        _antsWarpInfoMatrix(warps)
-
-        _prepareCoordsForWarp(
-            _antsWarpInfoMatrix.out.transform
-                .combine(coordinates)
-                .map { it.flatten() }
-        )
-
-        // Apply warp
-        _antsApplyWarpToCoordinates(
-            warps.join(_prepareCoordsForWarp.out.coords)
-        )
-
-        // Revert orientation transform
-        _untransformCoordinates(
-            _antsWarpInfoMatrix.out.transform
-                .join(_antsApplyWarpToCoordinates.out.warpedCoordinates)
-        )
-
+        lps_coordinates = coordinates.map { x, y, z -> [-x, -y, z] } 
+        lps_coordinates | view
+        _prepareCoordsForWarp(lps_coordinates)
+        _antsApplyWarpToCoordinates(warps.combine(_prepareCoordsForWarp.out.coordsCsv))
 
     emit:
-        warpedCoordinates = _untransformCoordinates.out.fixedCoordinates
+        warpedCoordinates = _antsApplyWarpToCoordinates.out.warpedCoordinates
+
 }
 
 

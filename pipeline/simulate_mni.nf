@@ -121,7 +121,7 @@ process publishRegistration{
 */
     publishDir path: "${params.out_dir}/mniSimulation/${sub}/mniRegistration", \
                 mode: 'copy', \
-                overwrite: true
+                overwrite: false
 
     input:
     tuple val(sub), path(warped), path(warp), path(inverseWarp), path(qcSvg)
@@ -151,7 +151,7 @@ process publishSimulations{
 
     publishDir path: "${params.out_dir}/mniSimulation/${sub}/simulations", \
                 mode: 'copy', \
-                overwrite: true
+                overwrite: false
 
     input:
     tuple val(sub), path(simFile), path(simGeo),\
@@ -179,7 +179,7 @@ process publishCifti{
 */
     publishDir path: "${params.out_dir}/mniSimulation/${sub}/", \
                 mode: 'copy', \
-                overwrite: true
+                overwrite: false
 
     input:
     tuple val(sub), path(cifti)
@@ -273,6 +273,8 @@ workflow {
 
         coordinates = Channel.of(params.mni_coordinates)
             .map { it.strip("'").strip('"').split(",") }
+            .map { [ Integer.parseInt(it[0]), Integer.parseInt(it[1]), Integer.parseInt(it[2])] }
+
 
         antsApplyWarpToCoordinates(
             coordinates,
