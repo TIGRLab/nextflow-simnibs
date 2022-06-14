@@ -3,11 +3,39 @@
 */
 
 
+process convert_to_nifti {
+    /*
+    * Convert Freesurfer MGZ file to NIFTI
+    *
+    *
+    * Arguments:
+    *   sub (str): Subject ID
+    *   t1 (path): Path to Freesurfer MGZ file
+    *
+    * Outputs:
+    *   
+    *   nifti (queue): (sub, nifti) Converted NIFTI file
+    */
+
+    label 'freesurfer'
+
+    input:
+    tuple val(sub), path(mgz)
+
+    output:
+    tuple val(sub), path("${sub}.nii.gz"), emit: nifti
+
+    shell:
+    '''
+    mri_convert !{mgz} !{sub}.nii.gz
+    '''
+
+}
+
 process antsRegistration {
 
     /*
-    * ANTS settings from
-    * https://github.com/nipreps/niworkflows/blob/master/niworkflows/data/t1w-mni_registration_precise_000.json
+    * Run antsBrainExtraction and antsRegistration-based Nipype workflow
     *
     * Arguments:
     *   sub (str): Subject ID
@@ -18,9 +46,12 @@ process antsRegistration {
     *   warped (queue): (sub, warped) Warped moving image
     *   warp (queue): (sub, warp) Forward warp field
     *   inverseWarp (queue): (sub, warp) Inverse warp field
+    *   brain (queue): (sub, brain) Skullstrip brain output
+    *   mask (queue): (sub, mask) Skullstrip mask output
     */
 
-    label 'ants'
+    label 'niworkflows'
+    label 'bin'
 
     input:
     tuple val(sub), path(t1), path(mni)
@@ -28,34 +59,20 @@ process antsRegistration {
 
     output:
     tuple val(sub), path("${sub}_Warped.nii.gz"), emit: warped
-    tuple val(sub), path("${sub}Composite.h5"), emit: warp
-    tuple val(sub), path("${sub}InverseComposite.h5"), emit: inverseWarp
+    tuple val(sub), path("${sub}_Composite.h5"), emit: warp
+    tuple val(sub), path("${sub}_InverseComposite.h5"), emit: inverseWarp
+    tuple val(sub), path("${sub}_brain.nii.gz"), emit: brain
+    tuple val(sub), path("${sub}_mask.nii.gz"), emit: mask
 
 
     shell:
     '''
-    antsRegistration --collapse-output-transforms 1 --dimensionality 3 \
-        --initialize-transforms-per-stage 0 --interpolation LanczosWindowedSinc \
-        --output [ !{sub}, !{sub}_Warped.nii.gz ] \
-        --transform Rigid[ 0.05 ] \
-        --metric \
-            Mattes[ !{mni}, !{t1}, 1, 56, Regular, 0.25 ] \
-        --convergence [ 100x100, 1e-06, 20 ] \
-        --smoothing-sigmas 2.0x1.0vox --shrink-factors 2x1 \
-        --use-estimate-learning-rate-once 1 --use-histogram-matching 1 \
-        --transform Affine[ 0.08 ] \
-        --metric \
-            Mattes[ !{mni}, !{t1}, 1, 56, Regular, 0.25 ] \
-        --convergence [ 100x100, 1e-06, 20 ] \
-        --smoothing-sigmas 1.0x0.0vox --shrink-factors 2x1 \
-        --use-estimate-learning-rate-once 1 --use-histogram-matching 1 \
-        --transform SyN[ 0.1, 3.0, 0.0 ] \
-        --metric CC[ !{mni}, !{t1}, 1, 4, None, 1 ] \
-        --convergence [ 100x70x50x20, 1e-06, 10 ] \
-        --smoothing-sigmas 3.0x2.0x1.0x0.0vox --shrink-factors 8x4x2x1 \
-        --use-estimate-learning-rate-once 1 --use-histogram-matching 1 \
-        --winsorize-image-intensities [ 0.005, 0.995 ]  --write-composite-transform 1 \
-        -v
+    mkdir work
+    python /scripts/mni/robustRegistration.py \
+        !{t1} !{mni} \
+        "." "!{sub}" \
+        --nthreads !{task.cpus} \
+        --work ./work
     '''
 
 }
@@ -214,11 +231,12 @@ workflow registerFreesurferToMNI {
 
 
     main:
-        antsRegistration(
-            freesurfer
-                .map { s, f -> [s, "${f}/mri/brainmask.mgz"] }
-                .combine(mni)
-        )
+
+        convert_to_nifti(freesurfer.map { s, fsdir -> [
+            s, "${fsdir}/mri/T1.mgz"
+        ]})
+
+        antsRegistration(convert_to_nifti.out.nifti.combine(mni))
 
         antsRegistrationQC(
             antsRegistration.out.warped.combine(mni)
@@ -229,4 +247,6 @@ workflow registerFreesurferToMNI {
         warp = antsRegistration.out.warp
         inverseWarp = antsRegistration.out.inverseWarp
         qcImage = antsRegistrationQC.out.qcImage
+        brain = antsRegistration.out.brain
+        mask = antsRegistration.out.mask
 }

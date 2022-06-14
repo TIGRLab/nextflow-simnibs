@@ -1,8 +1,9 @@
 {
-	"ants_img": "/archive/code/containers/ANTS/ants_2.3.1-2022-01-14-fae71a4a2030.simg",
+	"ants_img": "/projects/jjeyachandra/niworkflows/nipreps_niworkflows_1.6.1-2022-05-27-0dd7e0821456.simg",
 	"connectome_img": "/archive/code/containers/FMRIPREP_CIFTIFY/tigrlab_fmriprep_ciftify_v1.3.2-2.3.3-2019-08-16-c0fcb37f1b56.simg",
 	"freesurfer_img": "/archive/code/containers/FREESURFER/bids_freesurfer_v6.0.1-4-2018-04-22-77961085015a.img",
 	"license": "/opt/quarantine/freesurfer/6.0.1/build/",
 	"simnibs_img": "/projects/jjeyachandra/simnibs-docker/simnibs_v3.2.5-2022-01-25-e606076a1374.simg",
-	"niviz_img":  "/projects/jjeyachandra/singularity_imgs/niviz_dev-2022-02-01-a50f62935533.simg"
+	"niviz_img":  "/projects/jjeyachandra/singularity_imgs/niviz_dev-2022-02-01-a50f62935533.simg",
+	"niworkflows_img": "/projects/jjeyachandra/niworkflows/nipreps_niworkflows_1.6.1-2022-05-27-0dd7e0821456.simg"
 }
